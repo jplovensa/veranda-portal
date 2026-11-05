@@ -11,3 +11,7 @@ node_modules/
 !veranda-assets.zip
 assets/*
 !assets/README.md
+
+# Generated production and viewer bundles
+_site/
+vendor/
