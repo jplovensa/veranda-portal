@@ -6,3 +6,8 @@ node_modules/
 *.tar.gz
 *.zip
 .veranda-*
+
+# Canonical project media is stored in the verified archive.
+!veranda-assets.zip
+assets/*
+!assets/README.md
