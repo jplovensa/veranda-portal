@@ -4,6 +4,14 @@
   "private": true,
   "type": "module",
   "description": "SECHA Studio+ Veranda furnishing portal",
-  "scripts": {"dev": "node server.mjs", "start": "node server.mjs", "check": "node --check app.js && node --check server.mjs"},
-  "engines": {"node": ">=18"}
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "check": "node --check app.js && node --check server.mjs && node --check prepare-assets.mjs",
+    "predev": "node prepare-assets.mjs",
+    "prestart": "node prepare-assets.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
