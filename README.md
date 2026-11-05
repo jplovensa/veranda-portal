@@ -2,6 +2,10 @@
 
 A private client presentation for the Veranda two bedroom furnishing proposal. Built with plain HTML, CSS and JavaScript, with bundled concept films, imagery and the Inter variable font.
 
+## Transfer status
+
+The application source and Codex instructions are committed. Binary asset upload is still pending browser file-upload access. Until the `assets/` folder is transferred, a fresh clone will show missing project media and use the font fallback. The complete source ZIP supplied in the project conversation includes the full assets folder; extract its contents into this repository to complete the transfer.
+
 ## Develop in Codex
 
 Open this repository in Codex. Node.js 18+ is enough; there are no npm dependencies to install.
