@@ -2,9 +2,9 @@
 
 A private client presentation for the Veranda two bedroom furnishing proposal. Built with plain HTML, CSS and JavaScript, with bundled concept films, imagery and the Inter variable font.
 
-## Transfer status
+## Complete project assets
 
-The application source and Codex instructions are committed. Binary asset upload is still pending browser file-upload access. Until the `assets/` folder is transferred, a fresh clone will show missing project media and use the font fallback. The complete source ZIP supplied in the project conversation includes the full assets folder; extract its contents into this repository to complete the transfer.
+All 26 media and font files are included in `veranda-assets.zip`. `npm run dev` or `npm start` automatically verifies the archive SHA-256 and extracts `assets/` before starting the server. There are no external media downloads or npm dependencies. Keep extracted files out of commits; update the canonical archive and checksum deliberately when replacing media.
 
 ## Develop in Codex
 
@@ -21,7 +21,8 @@ Open http://localhost:3000. The development server is loopback-only by default. 
 - `index.html`: presentation sections and accessible markup
 - `style.css`: responsive layout, Inter typography and print styles
 - `app.js`: room tabs, film player, materials, budget and local review notes
-- `assets/`: original concept films, room renders, materials, branding and bundled font
+- `veranda-assets.zip`: all original concept films, room renders, materials, branding and the bundled font
+- `prepare-assets.mjs`: verifies and unpacks the media archive into `assets/`
 - `server.mjs`: dependency-free development server
 - `AGENTS.md`: project constraints for Codex
 
