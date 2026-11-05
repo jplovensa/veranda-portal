@@ -1,0 +1,17 @@
+import './prepare-assets.mjs';
+import { cpSync, mkdirSync, rmSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+const root = resolve('.');
+const output = resolve('_site');
+rmSync(output, { recursive: true, force: true });
+mkdirSync(output, { recursive: true });
+for (const file of ['index.html', 'style.css', 'app.js']) cpSync(resolve(root, file), resolve(output, file));
+cpSync(resolve(root, 'assets'), resolve(output, 'assets'), { recursive: true });
+writeFileSync(resolve(output, '.nojekyll'), '');
+const html = readFileSync(resolve(output, 'index.html'), 'utf8');
+const required = new Set([...html.matchAll(/(?:src|href|poster)="(assets\/[^\"]+)"/g)].map(match => match[1]));
+required.add('assets/fonts/Inter-Variable.ttf');
+for (let i = 1; i <= 5; i++) for (const ext of ['mp4', 'jpg']) required.add(`assets/film-${i}.${ext}`);
+for (const name of ['living', 'kitchen', 'main_bedroom', 'guest_concept', 'entrance']) required.add(`assets/${name}.jpg`);
+for (const path of required) if (!statSync(resolve(output, path)).size) throw Error(`Empty build asset: ${path}`);
+console.log(`Built _site with ${required.size} verified asset references, including all five films.`);
