@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",
-    "check": "node --check app.js && node --check server.mjs && node --check prepare-assets.mjs && node --check build.mjs && node --check layout.js && node --check prepare-viewer.mjs && node --check layout-software.js && node --check layout-3br.js",
+    "check": "node --check app.js && node --check server.mjs && node --check prepare-assets.mjs && node --check build.mjs && node --check layout.js && node --check prepare-viewer.mjs && node --check layout-software.js && node --check layout-3br.js && node --check veranda-materials.js && node --check resort-software.js",
     "predev": "node prepare-assets.mjs && node prepare-viewer.mjs",
     "prestart": "node prepare-assets.mjs && node prepare-viewer.mjs",
     "build": "node build.mjs"
