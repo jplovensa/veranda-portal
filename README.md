@@ -16,12 +16,19 @@ npm run dev
 
 Open http://localhost:3000. The development server is loopback-only by default. `npm run check` verifies JavaScript syntax. This GitHub repository serves the static portal from its root; the existing Sites publication uses the same three application files under `dist/` in its hosting checkout.
 
+## Publish to GitHub Pages
+
+Pages uses the `Deploy Veranda portal` GitHub Actions workflow. Every push to `main` runs the production build, verifies and extracts the archive, copies the application and all media into `_site/`, and publishes that complete artifact. Pages source must be GitHub Actions, rather than Deploy from a branch.
+
+For another static host, set build command to `npm run build` and output directory to `_site`. Serving the repository root directly will omit the archived media.
+
 ## Files
 
 - `index.html`: presentation sections and accessible markup
 - `style.css`: responsive layout, Inter typography and print styles
 - `app.js`: room tabs, film player, materials, budget and local review notes
 - `veranda-assets.zip`: all original concept films, room renders, materials, branding and the bundled font
+- `build.mjs`: creates and verifies the complete `_site/` production output
 - `prepare-assets.mjs`: verifies and unpacks the media archive into `assets/`
 - `server.mjs`: dependency-free development server
 - `AGENTS.md`: project constraints for Codex
