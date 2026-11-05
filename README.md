@@ -36,9 +36,9 @@ For another static host, set build command to `npm run build` and output directo
 - `server.mjs`: dependency-free development server
 - `AGENTS.md`: project constraints for Codex
 
-## Commercial baseline — revision 04
+## Commercial baseline — revision 05
 
-All amounts include VAT. Planned package: IDR 180 million. Controlled reserve: IDR 10 million. Maximum cap: IDR 190 million. Kitchen and dining: IDR 27 million, including the full IDR 7 million transfer from the bathroom. The complete Veranda-provided bathroom stays untouched and has IDR 0 allocated. The proposed EPS partition is optional and unpriced; fund it through approved offsets or reserve within the existing cap.
+All amounts include VAT. 2BR planned package: IDR 165 million. Controlled reserve: IDR 10 million. Maximum cap: IDR 175 million. 3BR planned package: IDR 215 million plus IDR 10 million controlled reserve; maximum IDR 225 million. Kitchen and dining: IDR 27 million, retained as a priority within the revised 2BR cap. The complete Veranda-provided bathroom stays untouched and has IDR 0 allocated. The proposed EPS partition is optional and unpriced; fund it through approved offsets or reserve within the applicable unit cap.
 
 Films and renders are illustrative, not measured drawings or completed-project photographs. A survey, product selection and supplier-backed final quotation are required before ordering.
 
@@ -60,6 +60,10 @@ Three.js is distributed under the MIT licence, copied to `vendor/THREE-LICENSE.t
 
 ## Three-bedroom layout
 
-`3br.html#layout` provides a separate interactive study based on the uploaded `3br.pdf`. It uses `layout-3br.js` and the shared viewer styles/vendor modules. The two pages link through an apartment-type switch. The 3BR page has all three bedrooms, the main dressing return and ensuite, common bathroom, service kitchen, entrance/lift context and long balcony. Printed chains are 3 + 3 + 3.5 m above, 4.5 + 2 + 6 m at right, and a 6 m lower bay plus 1 m balcony width. The partial left chain stops at the foyer and must not be interpreted as the full unit depth. Recesses and fixture positions are approximate. Ceiling height remains assumed at 2.7 m; all wet areas are existing context only. No 3BR price or area is inferred, and the 2BR budget does not apply to it.
+`3br.html#layout` provides a separate interactive study based on the uploaded `3br.pdf`. It uses `layout-3br.js` and the shared viewer styles/vendor modules. The two pages link through an apartment-type switch. The 3BR page has all three bedrooms, the main dressing return and ensuite, common bathroom, service kitchen, entrance/lift context and long balcony. Printed chains are 3 + 3 + 3.5 m above, 4.5 + 2 + 6 m at right, and a 6 m lower bay plus 1 m balcony width. The partial left chain stops at the foyer and must not be interpreted as the full unit depth. Recesses and fixture positions are approximate. Ceiling height remains assumed at 2.7 m; all wet areas are existing context only. No area is inferred from the drawing chains. The 3BR cap is IDR 225 million including VAT, with a provisional IDR 215 million package and IDR 10 million reserve.
 
 Validation includes syntax/build checks and desktop/mobile browser inspection, room switching, plan view, EPS option, guided tour and PNG export. Narrow stages adjust camera zoom and label placement to reduce clipping/overlap.
+
+## Resort-residence direction — 6 November 2026
+
+Revision 05 connects SECHA Studio+ furnishing to The Veranda Resort Residence in Lebak Bulus, South Jakarta: daylight, garden-inspired calm, ivory and walnut, quiet bedrooms and clear circulation. The official developer context is https://theverandaresidence.co.id/ . The furnishing proposal is SECHA's concept, not a promise of developer-supplied furniture or rental returns. Financial caps include VAT and reserve; room allocations and final products remain provisional. 2BR room budgets reconcile to IDR 165 million (13 design/delivery, 9 entrance, 35 living, 27 kitchen/dining, 32 main bedroom, 21 second bedroom, 0 bathroom, 18 finishes, 10 appliances). 3BR reconciles to IDR 215 million (15, 10, 39, 32, 38, 24, 23 third bedroom, 0 bathrooms, 22 finishes, 12 appliances). Proposed 50/30/20 payments apply to planned package amounts only; reserve requires separate written approval. Existing local review notes migrate from Revision 04 with the allocation checklist reset for re-review.
