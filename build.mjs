@@ -6,7 +6,7 @@ const root = resolve('.');
 const output = resolve('_site');
 rmSync(output, { recursive: true, force: true });
 mkdirSync(output, { recursive: true });
-for (const file of ['index.html', 'style.css', 'app.js', 'layout.js', 'layout.css', 'layout-software.js']) cpSync(resolve(root, file), resolve(output, file));
+for (const file of ['index.html', 'style.css', 'app.js', 'layout.js', 'layout.css', 'layout-software.js', '3br.html', 'layout-3br.js']) cpSync(resolve(root, file), resolve(output, file));
 cpSync(resolve(root, 'assets'), resolve(output, 'assets'), { recursive: true });
 cpSync(resolve(root, 'vendor'), resolve(output, 'vendor'), { recursive: true });
 writeFileSync(resolve(output, '.nojekyll'), '');
