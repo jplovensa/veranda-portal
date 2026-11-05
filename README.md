@@ -57,3 +57,9 @@ Open `#layout` for orbit and plan views, room selection, a guided camera tour, d
 The model follows the uploaded `2BR.pdf` plan. Printed bottom and left dimension chains span 8.5 m each; these are datums, not a floor-area calculation. The balcony is labelled 1 × 3 m. The second-bedroom width (approximately 3.7 m) is traced. Ceiling height (2.7 m), wall thickness and furniture sizes are planning assumptions. Shared lift/lobby geometry is outside the unit. This is a concept planning model requiring an on-site survey before manufacture or installation. The bathroom is existing context only; its scope remains IDR 0. EPS is optional and unpriced.
 
 Three.js is distributed under the MIT licence, copied to `vendor/THREE-LICENSE.txt` during preparation. Vendor files and extracted assets are build outputs.
+
+## Three-bedroom layout
+
+`3br.html#layout` provides a separate interactive study based on the uploaded `3br.pdf`. It uses `layout-3br.js` and the shared viewer styles/vendor modules. The two pages link through an apartment-type switch. The 3BR page has all three bedrooms, the main dressing return and ensuite, common bathroom, service kitchen, entrance/lift context and long balcony. Printed chains are 3 + 3 + 3.5 m above, 4.5 + 2 + 6 m at right, and a 6 m lower bay plus 1 m balcony width. The partial left chain stops at the foyer and must not be interpreted as the full unit depth. Recesses and fixture positions are approximate. Ceiling height remains assumed at 2.7 m; all wet areas are existing context only. No 3BR price or area is inferred, and the 2BR budget does not apply to it.
+
+Validation includes syntax/build checks and desktop/mobile browser inspection, room switching, plan view, EPS option, guided tour and PNG export. Narrow stages adjust camera zoom and label placement to reduce clipping/overlap.
