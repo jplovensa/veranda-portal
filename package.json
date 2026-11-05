@@ -7,9 +7,10 @@
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",
-    "check": "node --check app.js && node --check server.mjs && node --check prepare-assets.mjs",
+    "check": "node --check app.js && node --check server.mjs && node --check prepare-assets.mjs && node --check build.mjs",
     "predev": "node prepare-assets.mjs",
-    "prestart": "node prepare-assets.mjs"
+    "prestart": "node prepare-assets.mjs",
+    "build": "node build.mjs"
   },
   "engines": {
     "node": ">=18"
