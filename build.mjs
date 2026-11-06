@@ -6,7 +6,7 @@ const root = resolve('.');
 const output = resolve('_site');
 rmSync(output, { recursive: true, force: true });
 mkdirSync(output, { recursive: true });
-for (const file of ['index.html', 'style.css', 'app.js', 'layout.js', 'layout.css', 'layout-software.js', '3br.html', '3br-classic.html', 'layout-3br-classic.js', 'layout-3br.js', 'veranda-materials.js', 'resort-software.js']) cpSync(resolve(root, file), resolve(output, file));
+for (const file of ['index.html', 'style.css', 'app.js', 'layout.js', 'layout.css', 'layout-software.js', '3br-preview.css', '3br-preview.js', '3br.html', '3br-classic.html', 'layout-3br-classic.js', 'layout-3br.js', 'veranda-materials.js', 'resort-software.js']) cpSync(resolve(root, file), resolve(output, file));
 cpSync(resolve(root, 'assets'), resolve(output, 'assets'), { recursive: true });
 cpSync(resolve(root, 'vendor'), resolve(output, 'vendor'), { recursive: true });
 writeFileSync(resolve(output, '.nojekyll'), '');
@@ -15,6 +15,7 @@ const required = new Set([...html.matchAll(/(?:src|href|poster)="(assets\/[^\"]+
 required.add('assets/fonts/Inter-Variable.ttf');
 for (let i = 1; i <= 5; i++) for (const ext of ['mp4', 'jpg']) required.add(`assets/film-${i}.${ext}`);
 for (const name of ['living', 'kitchen', 'main_bedroom', 'guest_concept', 'entrance']) required.add(`assets/${name}.jpg`);
+for (const room of ['living','kitchen','main','second','third','entrance']) for (const suffix of ['.webp','-thumb.webp']) required.add('assets/3br-resort/'+room+suffix);
 for (const path of required) if (!statSync(resolve(output, path)).size) throw Error(`Empty build asset: ${path}`);
 console.log(`Built _site with ${required.size} verified asset references, including all five films.`);
 
