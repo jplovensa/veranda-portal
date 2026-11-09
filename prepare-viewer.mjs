@@ -7,3 +7,9 @@ for (const [source,target] of [['exporters/GLTFExporter.js','GLTFExporter.js'],[
  const sourceText=readFileSync('node_modules/three/examples/jsm/'+source,'utf8').replaceAll("from 'three'","from './three.module.js'").replace("from './../utils/TextureUtils.js'","from './TextureUtils.js'");
  writeFileSync('vendor/'+target,sourceText);
 }
+for (const file of ['loaders/GLTFLoader.js', 'loaders/RGBELoader.js', 'utils/BufferGeometryUtils.js', 'environments/RoomEnvironment.js', 'libs/meshopt_decoder.module.js']) {
+ const source = readFileSync('node_modules/three/examples/jsm/' + file, 'utf8')
+   .replaceAll("from 'three'", "from './three.module.js'")
+   .replace("from '../utils/BufferGeometryUtils.js'", "from './BufferGeometryUtils.js'");
+ writeFileSync('vendor/' + file.split('/').at(-1), source);
+}

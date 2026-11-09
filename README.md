@@ -75,3 +75,13 @@ The supplied Veranda virtual tour (https://veranda.co.id/theveranda/virtual-tour
 `veranda-materials.js` creates local deterministic stone, walnut and textile texture studies. `resort-software.js` projects textured geometry when WebGL is unavailable; the 2BR fallback remains separate. The 3BR model adds rounded upholstery, curved table forms, skirting, full-height doors, window openings, curtain folds, ceiling slabs and warm lighting. Built-up and cutaway modes, optional ceilings and SketchUp-style edge profiles are available. Interior views/tour stops use full heights and hide annotations; overview resets open the model again.
 
 Prepare editable 3D generates a GLB with embedded textures and full-height geometry, excluding the presentation ground, annotation lines and sketch profiles. It is a concept GLB, not a native SketchUp SKP file or fabrication model. GLTFExporter and TextureUtils are bundled from the locked Three.js package. Browser validation confirmed a GLB 2 scene with 425 meshes, 47 materials and five embedded textures (approximately 1.5 MB). PNG export remains available for the chosen model view.
+
+### Blender walkthroughs
+
+Open the **Blender walkthrough** link from either apartment’s 3D layout section. The walkthrough loads an optimized export of the editable Blender scene. Use **Cutaway** or **Plan** to see the whole unit. Choose a room stop or **Walk**, then drag to look and use the on-screen joystick or WASD to move. **Play tour** visits the room stops in sequence. Lighting swatches switch between Daylight, Golden hour and Evening. The Media wall room stop shows the fitted walnut cabinetry and display niche.
+
+The editable sources are in `blender/Veranda-2BR.blend` and `blender/Veranda-3BR.blend`. To regenerate them and both web models with Blender 5.2, run `node prepare-assets.mjs` followed by `blender -b --python-exit-code 1 --python blender/build.py`. The checked-in browser exports live in `assets/walkthrough/`. Furniture and material credits are available from the walkthrough footer.
+
+The scenes use the unit plan datums and traced openings. Heights, furniture sizes and clearances are design assumptions pending field measurements. The 2BR island is parallel to the retained cooktop run, with stools tucked under its overhang, a clear bathroom approach, and a 1.10 m counter-to-island gap in the model. In the 3BR, dining sits outside the service run. Gray granite is used in the living, dining, kitchen and hall areas, with wood-look SPC in every bedroom.
+
+Run `python3 blender/verify.py` after exporting to check the walkthrough camera stops, walking routes and modelled kitchen clearances.
