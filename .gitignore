@@ -15,3 +15,13 @@ assets/*
 # Generated production and viewer bundles
 _site/
 vendor/
+
+# Optimized Blender walkthrough exports, required by the static build.
+!assets/walkthrough/
+!assets/walkthrough/*.glb
+!assets/walkthrough/*.json
+!assets/walkthrough/*.hdr
+
+# Local Blender/Python cache files
+__pycache__/
+*.blend[0-9]
