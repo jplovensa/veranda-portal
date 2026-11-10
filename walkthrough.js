@@ -394,9 +394,10 @@ async function load() {
     orbit.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
     orbit.touches.ONE = THREE.TOUCH.ROTATE;
     const path = `assets/walkthrough/${unit}`;
+    const version = unit === '3br' ? 'resort-1' : 'bathrooms-1';
     const [gltf, settings, garden] = await Promise.all([
-      new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(path + '.glb?v=bathrooms-1'),
-      fetch(path + '.json?v=bathrooms-1').then(response => {
+      new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(`${path}.glb?v=${version}`),
+      fetch(`${path}.json?v=${version}`).then(response => {
         if (!response.ok) throw Error('Apartment settings unavailable');
         return response.json();
       }),

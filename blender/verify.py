@@ -35,6 +35,16 @@ def verify(unit):
             if solid["name"] in {"Breakfast island","Leather counter stool"}:
                 assert solid["rect"][0]>=5.91, "2BR: breakfast seating enters the bathroom approach"
     by_name = {s["name"]: s["rect"] for s in data["solids"]}
+    if unit == "3br":
+        table = by_name["Dining table"]
+        chairs = [s["rect"] for s in data["solids"] if s["name"] == "Six-seat dining chair"]
+        assert len(chairs) == 6, "3BR: the dining table needs six chairs"
+        assert sum((rect[0]+rect[2])/2 < table[0] for rect in chairs) == 3
+        assert sum((rect[0]+rect[2])/2 > table[2] for rect in chairs) == 3
+        chair_aisle = min(rect[0] for rect in chairs)-by_name["Kitchen worktop"][2]
+        assert chair_aisle >= .95, f"3BR: dining chairs narrow the kitchen aisle to {chair_aisle:.2f} m"
+        dining_to_lounge = by_name["Four-seat family sectional"][1]-table[3]
+        assert dining_to_lounge >= .85, f"3BR: dining and sectional leave {dining_to_lounge:.2f} m between them"
     worktop = by_name["Kitchen worktop"]
     gap = (worktop[0] - by_name["Breakfast island"][2] if unit == "2br"
            else by_name["Dining table"][0] - worktop[2])
