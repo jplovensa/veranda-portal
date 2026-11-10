@@ -3,75 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#25211c">
-  <link rel="icon" href="assets/secha.png">
   <title>Veranda | Apartment walkthroughs</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="walkthrough.css">
-  <script type="module" src="walkthrough.js"></script>
+  <script>
+    const unit = new URLSearchParams(location.search).get('unit');
+    location.replace(unit === '3br' ? '3br.html#layout' : 'index.html#layout');
+  </script>
 </head>
-<body class="walkthrough">
-  <header class="walk-top">
-    <a class="walk-brand" href="index.html">SECHA STUDIO<span>+</span></a>
-    <nav aria-label="Apartments">
-      <a data-unit="2br" href="walkthrough.html?unit=2br">2BR</a>
-      <a data-unit="3br" href="walkthrough.html?unit=3br">3BR</a>
-      <a id="proposal" href="index.html#layout">Back to proposal</a>
-    </nav>
-  </header>
-  <main class="walk-main">
-    <div class="walk-intro">
-      <div><p class="walk-kicker">VERANDA RESORT RESIDENCE / LEBAK BULUS</p><h1 id="title">Apartment walkthrough</h1></div>
-      <p>Explore the modern-classic interiors from above or step inside. Cabinetry and furniture are shown at concept sizes.</p>
-    </div>
-    <div class="walk-grid">
-      <section class="walk-viewport" aria-label="Apartment model">
-        <div id="stage" class="walk-stage"></div>
-        <p class="walk-status" id="status" role="status">Loading apartment model…</p>
-        <div class="walk-joystick" id="joystick" hidden>
-          <button id="stick" aria-label="Walk joystick. Drag to move, or use W, A, S and D." aria-describedby="hint">
-            <span class="stick-tick stick-n" aria-hidden="true"></span>
-            <span class="stick-tick stick-e" aria-hidden="true"></span>
-            <span class="stick-tick stick-s" aria-hidden="true"></span>
-            <span class="stick-tick stick-w" aria-hidden="true"></span>
-            <span id="stick-thumb" class="stick-thumb" aria-hidden="true"></span>
-          </button>
-        </div>
-        <div class="walk-hint" id="hint">Drag to orbit · Scroll or pinch to zoom</div>
-      </section>
-      <aside class="walk-sidebar" aria-label="Walkthrough controls">
-        <div>
-          <p class="walk-kicker">VIEW</p>
-          <div class="walk-controls">
-            <button data-mode="orbit" aria-pressed="true" disabled>Cutaway</button>
-            <button data-mode="plan" aria-pressed="false" disabled>Plan</button>
-            <button data-mode="walk" aria-pressed="false" disabled>Walk</button>
-            <button id="tour" aria-pressed="false" disabled>Play tour</button>
-          </div>
-        </div>
-        <div>
-          <p class="walk-kicker">ROOM STOPS</p>
-          <nav class="walk-rooms" id="rooms" aria-label="Room stops"></nav>
-        </div>
-        <div>
-          <p class="walk-kicker">LIGHTING</p>
-          <div class="walk-swatches" role="group" aria-label="Lighting swatches">
-            <button data-light="daylight" aria-pressed="true" disabled><span class="swatch-day" aria-hidden="true"></span>Daylight</button>
-            <button data-light="golden" aria-pressed="false" disabled><span class="swatch-gold" aria-hidden="true"></span>Golden hour</button>
-            <button data-light="evening" aria-pressed="false" disabled><span class="swatch-night" aria-hidden="true"></span>Evening</button>
-          </div>
-        </div>
-        <div class="walk-clearances">
-          <p class="walk-kicker">KITCHEN CLEARANCE</p>
-          <dl id="clearances"></dl>
-          <p>Based on the model. Verify on site with the final appliance, cabinetry and furniture sizes.</p>
-        </div>
-      </aside>
-    </div>
-  </main>
-  <footer class="walk-foot">
-    <span>Concept model based on the supplied unit plan. Ceiling height is assumed at 2.7 m.</span>
-    <a href="furniture-credits.html">Furniture and texture credits</a>
-  </footer>
+<body>
+  <h1>Veranda apartment walkthroughs</h1>
+  <p><a href="index.html#layout">2BR walkthrough</a></p>
+  <p><a href="3br.html#layout">3BR walkthrough</a></p>
 </body>
 </html>

@@ -78,7 +78,7 @@ Prepare editable 3D generates a GLB with embedded textures and full-height geome
 
 ### Blender walkthroughs
 
-Open the **Blender walkthrough** link from either apartment’s 3D layout section. The walkthrough loads an optimized export of the editable Blender scene. Use **Cutaway** or **Plan** to see the whole unit. Choose a room stop or **Walk**, then drag to look and use the on-screen joystick or WASD to move. **Play tour** visits the room stops in sequence. Lighting swatches switch between Daylight, Golden hour and Evening. The Media wall room stop shows the fitted walnut cabinetry and display niche.
+Open the **3D layout** section on either apartment’s proposal page to use its embedded Blender walkthrough. The walkthrough loads an optimized export of the editable Blender scene. Use **Cutaway** or **Plan** to see the whole unit. Choose a room stop or **Walk**, then drag to look and use the on-screen joystick or WASD to move. **Play tour** visits the room stops in sequence. Lighting swatches switch between Daylight, Golden hour and Evening. The Media wall room stop shows the fitted walnut cabinetry and display niche.
 
 The editable sources are in `blender/Veranda-2BR.blend` and `blender/Veranda-3BR.blend`. To regenerate them and both web models with Blender 5.2, run `node prepare-assets.mjs` followed by `blender -b --python-exit-code 1 --python blender/build.py`. The checked-in browser exports live in `assets/walkthrough/`. Furniture and material credits are available from the walkthrough footer.
 

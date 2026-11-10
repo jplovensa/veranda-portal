@@ -5,16 +5,64 @@ import { RGBELoader } from './vendor/RGBELoader.js';
 import { MeshoptDecoder } from './vendor/meshopt_decoder.module.js';
 import { RoomEnvironment } from './vendor/RoomEnvironment.js';
 
-const unit = new URLSearchParams(location.search).get('unit') === '3br' ? '3br' : '2br';
-const ui = id => document.getElementById(id);
+const section = document.querySelector('[data-walkthrough-unit]');
+const unit = section.dataset.walkthroughUnit;
+const mount = section.querySelector('.walk-viewer');
+mount.insertAdjacentHTML('afterbegin', `
+    <div class="walk-grid">
+      <section class="walk-viewport" aria-label="Apartment model">
+        <div id="stage" class="walk-stage"></div>
+        <p class="walk-status" id="status" role="status">Loading apartment model…</p>
+        <div class="walk-joystick" id="joystick" hidden>
+          <button id="stick" aria-label="Walk joystick. Drag to move, or use W, A, S and D." aria-describedby="hint">
+            <span class="stick-tick stick-n" aria-hidden="true"></span>
+            <span class="stick-tick stick-e" aria-hidden="true"></span>
+            <span class="stick-tick stick-s" aria-hidden="true"></span>
+            <span class="stick-tick stick-w" aria-hidden="true"></span>
+            <span id="stick-thumb" class="stick-thumb" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="walk-hint" id="hint">Drag to orbit · Scroll or pinch to zoom</div>
+      </section>
+      <aside class="walk-sidebar" aria-label="Walkthrough controls">
+        <div>
+          <p class="walk-kicker">VIEW</p>
+          <div class="walk-controls">
+            <button data-mode="orbit" aria-pressed="true" disabled>Cutaway</button>
+            <button data-mode="plan" aria-pressed="false" disabled>Plan</button>
+            <button data-mode="walk" aria-pressed="false" disabled>Walk</button>
+            <button id="tour" aria-pressed="false" disabled>Play tour</button>
+          </div>
+        </div>
+        <div>
+          <p class="walk-kicker">ROOM STOPS</p>
+          <nav class="walk-rooms" id="walkRoomStops" aria-label="Room stops"></nav>
+        </div>
+        <div>
+          <p class="walk-kicker">LIGHTING</p>
+          <div class="walk-swatches" role="group" aria-label="Lighting swatches">
+            <button data-light="daylight" aria-pressed="true" disabled><span class="swatch-day" aria-hidden="true"></span>Daylight</button>
+            <button data-light="golden" aria-pressed="false" disabled><span class="swatch-gold" aria-hidden="true"></span>Golden hour</button>
+            <button data-light="evening" aria-pressed="false" disabled><span class="swatch-night" aria-hidden="true"></span>Evening</button>
+          </div>
+        </div>
+        <div class="walk-clearances">
+          <p class="walk-kicker">KITCHEN CLEARANCE</p>
+          <dl id="clearances"></dl>
+          <p>Based on the model. Verify on site with the final appliance, cabinetry and furniture sizes.</p>
+        </div>
+      </aside>
+    </div>
+`);
+const ui = id => section.querySelector('#' + id);
 const stage = ui('stage');
 const status = ui('status');
-const modeButtons = [...document.querySelectorAll('[data-mode]')];
+const modeButtons = [...section.querySelectorAll('[data-mode]')];
 const roomButtons = [];
 const keys = new Set();
 const stick = ui('stick');
 const motion = new THREE.Vector2();
-const lightingButtons = [...document.querySelectorAll('[data-light]')];
+const lightingButtons = [...section.querySelectorAll('[data-light]')];
 const movementKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 const eye = 1.62;
 const radius = .19;
@@ -36,11 +84,6 @@ let lastTime = 0, needsRender = true;
 let lightStyle = 'daylight', joystickPointer = null;
 let hemi, key;
 const fillLights = [];
-
-ui('title').textContent = `Veranda ${unit.toUpperCase()} walkthrough`;
-ui('proposal').href = (unit === '3br' ? '3br.html' : 'index.html') + '#layout';
-document.title = `Veranda ${unit.toUpperCase()} | Walkthrough`;
-document.querySelector(`[data-unit="${unit}"]`).setAttribute('aria-current', 'page');
 
 function inside(x, z, [x1, z1, x2, z2]) {
   return x >= x1 && x <= x2 && z >= z1 && z <= z2;
@@ -187,7 +230,7 @@ function bindControls() {
       setMode('walk', i);
       canvas.focus({ preventScroll: true });
     });
-    ui('rooms').append(button);
+    ui('walkRoomStops').append(button);
     roomButtons.push(button);
   }
   for (const check of data.checks) {
@@ -383,7 +426,17 @@ async function load() {
   } catch (error) {
     console.error(error);
     status.hidden = false;
-    status.textContent = 'The 3D walkthrough could not load. You can return to the proposal for the plan and room views.';
+    status.textContent = 'The 3D walkthrough could not load. Reload to try again. The proposal and room previews are still available on this page.';
   }
 }
-load();
+// Keep the proposal lightweight until the walkthrough is near the viewport.
+if ('IntersectionObserver' in window) {
+  const observer = new IntersectionObserver(([entry]) => {
+    if (!entry.isIntersecting) return;
+    observer.disconnect();
+    load();
+  }, { rootMargin: '300px' });
+  observer.observe(mount);
+} else {
+  load();
+}

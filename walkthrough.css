@@ -2,37 +2,13 @@
   --walk-ink: #2b231d;
   --walk-line: #d6cdbf;
   --walk-panel: #fffdf8;
-  background: #f4efe6;
   color: var(--walk-ink);
-  min-height: 100vh;
 }
 .walkthrough [hidden] { display: none !important; }
-.walk-top, .walk-main, .walk-foot { max-width: 1520px; margin: 0 auto; }
-.walk-top {
-  padding: 1rem clamp(1rem, 4vw, 3.75rem);
-  display: flex;
-  flex-wrap: wrap;
-  gap: .75rem 1.2rem;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--walk-line);
-}
-.walk-top a { text-decoration: none; color: inherit; }
-.walk-top nav { display: flex; flex-wrap: wrap; gap: .65rem; }
-.walk-top nav a { padding: .4rem .55rem; font-size: .8rem; }
-.walk-top nav a[aria-current] { border-bottom: 2px solid #6e4e35; font-weight: 700; }
-.walk-brand { font-weight: 700; letter-spacing: .12em; font-size: .86rem; }
-.walk-brand span { color: #7a5339; }
-.walk-main { padding: clamp(1rem, 3vw, 2.6rem) clamp(1rem, 4vw, 3.75rem) 1rem; }
-.walk-intro { display: flex; gap: .8rem 2rem; flex-wrap: wrap; justify-content: space-between; align-items: end; margin-bottom: 1.1rem; }
-.walk-intro h1 {
-  font-family: inherit;
-  font-size: clamp(1.65rem, 4vw, 3.6rem);
-  line-height: 1.08;
-  margin: .32rem 0 0;
-  letter-spacing: -.055em;
-}
-.walk-intro > p { max-width: 32ch; margin: 0; font-size: .86rem; }
+.walk-viewer { margin-top: 32px; }
+.walk-note { color: #62584e; font-size: .74rem; margin: .85rem 0 0; }
+.walk-note a { text-decoration: underline; text-underline-offset: .2em; }
+@media print { .walk-viewer { display: none; } }
 .walk-kicker { margin: 0 0 .45rem; color: #6a503d; font-size: .68rem; font-weight: 700; letter-spacing: .12em; }
 .walk-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(13rem,17rem); gap: .85rem; }
 .walk-viewport { min-width: 0; min-height: 510px; height: min(67vh, 810px); position: relative; isolation: isolate; background: #dcd2c4; }
@@ -117,9 +93,6 @@
 .swatch-day { background: linear-gradient(125deg,#d2e4ef,#f9f1d4); }
 .swatch-gold { background: linear-gradient(125deg,#e6ad70,#f5d39d); }
 .swatch-night { background: linear-gradient(125deg,#43546d,#c08b5c); }
-.walk-foot > span { display: inline; }
-.walk-foot a:last-of-type { font-size: inherit; text-decoration: underline; text-underline-offset: .2em; }
-.walk-foot { padding: 0 clamp(1rem, 4vw, 3.75rem) 1.25rem; font-size: .74rem; color: #62584e; }
 @media (max-width: 800px) {
   .walk-grid { grid-template-columns: 1fr; }
   .walk-viewport { min-height: 400px; height: 60svh; }
