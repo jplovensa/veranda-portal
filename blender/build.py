@@ -300,13 +300,14 @@ def slab(x1,d1,x2,d2,finish_type="granite"):
     x, d = (x1+x2)/2, (d1+d2)/2
     box("Floor substrate", x, d, -.135, x2-x1, d2-d1, .12,
         "Tile seam", "Floors", 0)
-    if finish_type=="granite":
-        obj=box("Honed gray granite flooring",x,d,-.015,x2-x1,d2-d1,.015,
-                "Honed gray granite floor","Floors",0)
+    if finish_type in {"granite","marble"}:
+        surface,repeat = ("Honed light gray marble floor",1.17) if finish_type=="marble" else ("Honed gray granite floor",2.3)
+        label=surface if finish_type=="marble" else "Honed gray granite flooring"
+        obj=box(label,x,d,-.015,x2-x1,d2-d1,.015,surface,"Floors",0)
         # World-aligned tiling continues through open thresholds.
         for i,loop in enumerate(obj.data.loops):
             v=obj.data.vertices[loop.vertex_index].co
-            obj.data.uv_layers.active.data[i].uv=((x+v.x)/2.3,(d-v.y)/2.3)
+            obj.data.uv_layers.active.data[i].uv=((x+v.x)/repeat,(d-v.y)/repeat)
         return
     if finish_type == "deck":
         step, row = .16, 0
@@ -684,18 +685,222 @@ def bar(x,d):
         pendant(x,d+delta,2.02,.093)
 
 
-def dining(x,d):
-    box("Rounded walnut dining table",x,d,.738,1.57,.83,.056,"Walnut veneer",bevel=.025)
-    for a in (-1,1):
-        for b in (-1,1):
-            cylinder("Dining table leg",x+a*.63,d+b*.29,.01,.042,.738,"Espresso oak")
-    bounds("Dining table",x-.785,d-.415,x+.785,d+.415)
-    for a in (-1,1):
-        for b in (-1,1):
-            chair(x+a*.4,d+b*.69,-b)
-    cylinder("Table stoneware vase",x,d,.795,.084,.145,"Clay")
-    for i in (-1,0,1):
-        pendant(x+i*.44,d,2.07+abs(i)*.10,.095)
+def resort_marble():
+    """Pack a seamless lightly veined marble tile for Blender and the web export."""
+    import numpy as np
+
+    size=1024
+    uv=np.arange(size,dtype=np.float32)/size
+    u,v=np.meshgrid(uv,uv)
+    tau=2*math.pi
+    drift=.23*np.sin(tau*(u+2*v))+.14*np.sin(tau*(3*u-v)+.8)
+    grain=.012*np.sin(tau*(13*u+9*v))+.008*np.cos(tau*(29*u-19*v))
+    phase=tau*(2*u+v+drift+grain)
+    main=np.exp(-((np.sin(phase)+.16)/.086)**2)
+    split=np.exp(-((np.sin(phase+.16*np.sin(tau*(u-3*v)))+.32)/.096)**2)
+    haze=np.exp(-(np.sin(phase)/.31)**2)
+    cloud=.022*np.sin(tau*(2*u-3*v)+.7)+.013*np.cos(tau*(5*u+3*v))
+    value=.835+cloud-.09*main-.042*split-.041*haze
+    grout=np.minimum.reduce([u,1-u,v,1-v])<.0017
+    value=np.where(grout,.65,value)
+    rgba=np.stack((value+.006,value+.004,value,np.ones_like(value)),axis=-1)
+    image=bpy.data.images.new("Light gray marble • seamless veining",size,size,alpha=False)
+    image.pixels.foreach_set(rgba.reshape(-1))
+    image.pack()
+    material("Honed light gray marble floor","d3d2cf",.37)
+    mat=MAT["Honed light gray marble floor"]
+    texture=mat.node_tree.nodes.new("ShaderNodeTexImage")
+    texture.image=image
+    texture.extension="REPEAT"
+    mat.node_tree.links.new(texture.outputs["Color"],mat.node_tree.nodes.get("Principled BSDF").inputs["Base Color"])
+
+
+def upholstery(name,x,d,h,w,depth,height,mat,tilt=0,yaw=0):
+    """A soft upholstered form with a rounded crown and small asymmetric folds."""
+    def curved(value,power):
+        return math.copysign(abs(value)**power,value)
+
+    vertices=[(0,0,-height/2)]
+    n=40
+    bands=17
+    for j in range(1,bands):
+        v=math.pi*(j/bands-.5)
+        for i in range(n):
+            u=2*math.pi*i/n
+            radial=curved(math.cos(v),.43)
+            fold=1+.019*math.sin(3*u+.7)*math.cos(2*v)+.009*math.sin(7*u-4*v)
+            vertices.append((w/2*radial*curved(math.cos(u),.43)*fold,
+                             depth/2*radial*curved(math.sin(u),.43)*fold,
+                             height/2*curved(math.sin(v),.52)*fold))
+    vertices.append((0,0,height/2))
+    faces=[(0,1+(i+1)%n,1+i) for i in range(n)]
+    for j in range(bands-2):
+        row=1+j*n
+        faces.extend((row+i,row+(i+1)%n,row+(i+1)%n+n,row+i+n) for i in range(n))
+    row=len(vertices)-1-n
+    faces.extend((row+i,row+(i+1)%n,len(vertices)-1) for i in range(n))
+    mesh=bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices,[],faces)
+    uv=mesh.uv_layers.new()
+    for face in mesh.polygons:
+        face.use_smooth=True
+        vertical=abs(face.normal.z)<.6
+        for i in face.loop_indices:
+            px,py,pz=vertices[mesh.loops[i].vertex_index]
+            uv.data[i].uv=((px+py*.35)*3.8+.5,(pz if vertical else py)*3.8+.5)
+    obj=bpy.data.objects.new(name,mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.location=xyz(x,d,h)
+    obj.rotation_euler=(tilt,0,-yaw)
+    return finish(obj,name,mat,"Furnishings")
+
+
+def family_sectional():
+    x,d=6.75,10.03
+    for a in (5.23,8.27):
+        box("Recessed smoked oak sectional plinth",a,d,.037,.42,.76,.12,"Espresso oak",bevel=.035)
+    upholstery("Low upholstered sectional deck",x,d,.228,3.55,1.06,.27,"Resort ivory bouclé")
+    upholstery("Left chaise base",5.52,10.61,.228,.79,1.27,.27,"Resort ivory bouclé")
+    for a in (4.99,8.51):
+        upholstery("Pillow-top sectional arm",a,d,.487,.245,1.085,.37,"Resort ivory bouclé")
+    for a in (5.52,6.34,7.16,7.98):
+        chaise=a==5.52
+        upholstery("Deep chaise cushion" if chaise else "Deep feather seat",a,d+.38 if chaise else d+.15,
+                   .402,.83,1.68 if chaise else .79,.218,"Resort ivory bouclé")
+        upholstery("Loose feather back cushion",a,d-.355,.684,.835,.25,.58,"Resort ivory bouclé",.16)
+    for a,depth,z,w,h,tilt,yaw,mat in [
+        (5.25,9.42,.667,.42,.39,.37,.25,"Resort moss textile"),
+        (5.62,9.46,.612,.43,.28,.30,-.19,"Resort ochre textile"),
+        (6.56,9.37,.661,.40,.37,.30,.16,"Linen"),
+        (7.81,9.42,.671,.44,.40,.30,-.15,"Resort moss textile"),
+        (8.16,9.52,.611,.40,.27,.40,-.22,"Resort ochre textile"),
+    ]:
+        upholstery("Layered accent cushion",a,depth+.47,z,w,.17,h,mat,tilt,yaw)
+    bounds("Four-seat family sectional",4.84,9.48,8.66,10.60)
+    bounds("Sectional chaise extension",5.07,10.60,5.97,11.27)
+
+
+def resort_pendant(x,d,h,r):
+    g="Ceiling"
+    cylinder("Pendant stem",x,d,h+.22,.008,HEIGHT-h-.22,"Blackened bronze",g)
+    cylinder("Warm opal pendant core",x,d,h+.04,r*.34,.16,"Opal light",g)
+    for z,scale in ((h,1),(h+.075,.99),(h+.158,.84),(h+.222,.52)):
+        bpy.ops.mesh.primitive_torus_add(major_segments=48,minor_segments=6,location=xyz(x,d,z),
+                                        major_radius=r*scale,minor_radius=.0055)
+        finish(bpy.context.object,"Woven shade binding","Resort cane",g)
+    for i in range(52):
+        a=2*math.pi*i/52
+        lower=Vector(xyz(x+r*math.cos(a),d+r*math.sin(a),h))
+        upper=Vector(xyz(x+r*.53*math.cos(a+.06),d+r*.53*math.sin(a+.06),h+.22))
+        center=(lower+upper)*.5
+        rib=cylinder("Woven shade reed",center.x,-center.y,center.z-(upper-lower).length/2,
+                     .0046,(upper-lower).length,"Resort cane",g)
+        rib.rotation_euler=(upper-lower).to_track_quat("Z","Y").to_euler()
+
+
+def resort_dining(x,d):
+    width,length=.95,1.98
+    rounded_slab("Six-seat rounded walnut dining table",x,d,.736,width,length,.061,.14,"Walnut veneer")
+    for dd in (-.52,.52):
+        cylinder("Fluted walnut dining pedestal",x,d+dd,.015,.175,.722,"Walnut veneer",
+                 scale=(1.16,.82))
+        for i in range(22):
+            a=2*math.pi*i/22
+            cylinder("Walnut pedestal fluting",x+.20*math.cos(a),d+dd+.145*math.sin(a),
+                     .019,.012,.717,"Walnut veneer")
+    bounds("Dining table",x-width/2,d-length/2,x+width/2,d+length/2)
+    for side in (-1,1):
+        for offset in (-.63,0,.63):
+            furniture("dining-chair","Six-seat dining chair",x+side*.608,d+offset,.46,.49,.86,
+                      -side*math.pi/2)
+    box("Oat linen table runner",x,d,.798,.28,1.56,.007,"Linen",bevel=.003)
+    for side in (-1,1):
+        for offset in (-.63,0,.63):
+            px,pd=x+side*.30,d+offset
+            cylinder("Stoneware place plate",px,pd,.799,.105,.017,"Ceramic")
+            cylinder("Stoneware bowl",px,pd,.815,.070,.031,"Warm stone tile")
+            box("Folded olive napkin",px,pd-.113,.814,.094,.042,.014,"Resort moss textile",bevel=.003)
+    cylinder("Dining centerpiece vase",x,d+.12,.807,.070,.178,"Clay")
+    for i in range(5):
+        a=i*2.39996
+        u,v=x+.105*math.cos(a),d+.12+.11*math.sin(a)
+        h=1.12+i*.027
+        start,end=Vector(xyz(x,d+.12,.976)),Vector(xyz(u,v,h))
+        mid=(start+end)*.5
+        twig=oval("Centerpiece olive stem",mid.x,-mid.y,mid.z,(.004,.004,(end-start).length/2),
+                  "Olive foliage")
+        twig.rotation_euler=(end-start).to_track_quat("Z","Y").to_euler()
+        oval("Centerpiece olive leaf",u,v,h,(.082,.028,.015),"Olive foliage",tilt=.5).rotation_euler.z=a
+    for dd in (-.42,.42):
+        resort_pendant(x,d+dd,1.99,.25)
+    light("Dining pendant glow",(x,d,1.94),(x,d,.79),37,.56,(1,.82,.63))
+    return x-width/2,d-length/2,d+length/2
+
+
+def resort_display_cabinet():
+    x,d=3.473,11.085
+    box("Recessed display cabinet plinth",x-.037,d,0,.282,.823,.084,"Espresso oak",bevel=.008)
+    box("Walnut display cabinet back",3.306,d,.081,.052,.944,2.19,"Walnut veneer")
+    for v in (d-.451,d+.451):
+        box("Walnut display cabinet side",x,v,.081,.386,.039,2.19,"Walnut veneer",bevel=.007)
+    for h in (.081,.690,1.115,1.534,1.911,2.242):
+        box("Honed stone display shelf" if h==.690 else "Walnut display shelf",x,d,h,.388,.905,.032,
+            "Travertine" if h==.690 else "Walnut veneer",bevel=.006)
+        if .69<h:
+            box("Concealed warm display light",3.623,d,h-.009,.016,.837,.009,"Opal light",bevel=.002)
+    for v in (d-.227,d+.227):
+        box("Inset walnut display cabinet door",3.665,v,.111,.026,.440,.553,"Walnut veneer",bevel=.009)
+        panel(3.683,v,.138,.344,.491,"Espresso oak",axis="d")
+        box("Aged brass cabinet pull",3.700,v,.565,.022,.115,.014,"Brushed brass",bevel=.004)
+    for v,r,h,mat in [(d-.215,.092,.195,"Clay"),(d+.21,.065,.123,"Ceramic")]:
+        cylinder("Hand-thrown display vessel",3.486,v,.722,r,h,mat)
+        cylinder("Glazed vessel neck",3.486,v,.722+h,r*.52,.039,mat)
+    for i,h in enumerate((.190,.215,.173,.209,.197)):
+        box("Clothbound display book",3.478,d-.31+i*.047,1.147,.156,.038,h,
+            ("Paper","Resort moss textile","Clay","Linen","Espresso oak")[i],bevel=.003)
+    oval("Glazed display bowl",3.477,d+.203,1.187,(.085,.128,.039),"Ceramic")
+    cylinder("Sculptural display vase",3.483,d+.16,1.566,.102,.241,"Stone plinth",scale=(.79,1))
+    cylinder("Sculptural display vase neck",3.483,d+.16,1.800,.044,.064,"Stone plinth")
+    for h in (1.47,2.16):
+        light("Display cabinet shelf wash",(3.623,d,h),(3.40,d,h-.31),8,.26,(1,.85,.67))
+    bounds("Walnut display cabinet",3.28,d-.472,3.712,d+.472)
+
+
+def resort_lounge():
+    family_sectional()
+    rug(6.54,10.73,4.89,2.90)
+    coffee(6.89,11.11,.65)
+    rounded_slab("Low nesting travertine table",7.21,11.65,.285,.55,.46,.064,.22,"Travertine")
+    cylinder("Nesting table walnut drum",7.21,11.65,.018,.16,.268,"Walnut veneer")
+    bounds("Nesting table",6.935,11.42,7.485,11.88)
+    for x,d,a in [(4.21,11.88,1.75),(8.07,11.30,-1.22)]:
+        furniture("armchair","Woven resort lounge chair",x,d,.77,.77,.90,a)
+    resort_display_cabinet()
+    cylinder("Reading lamp floor base",8.52,11.91,0,.14,.035,"Blackened bronze")
+    cylinder("Reading lamp bronze stem",8.52,11.91,.035,.012,1.16,"Brushed brass")
+    cylinder("Linen reading lamp shade",8.52,11.91,1.16,.159,.255,"Linen")
+    cylinder("Reading lamp diffuser",8.52,11.91,1.159,.145,.013,"Opal light")
+    bounds("Lounge reading lamp",8.36,11.75,8.68,12.07)
+    light("Lounge reading lamp pool",(8.52,11.91,1.14),(8.02,11.37,.51),22,.25,(1,.79,.53))
+    for x,d,size in ((8.87,7.30,1.28),(8.91,12.21,.83)):
+        plant(x,d,size)
+    media_wall(6.45,12.27,3.33)
+    for x in (3.84,4.28,8.53):
+        panel(x,12.412,.22,.32,2.20,"Warm white millwork",group="Upper walls")
+    box("Gallery wall walnut backing",7.50,6.579,.59,2.34,.029,1.69,"Walnut veneer","Upper walls")
+    for i in range(23):
+        box("Fine walnut gallery battens",6.415+i*.098,6.602,.597,.046,.037,1.674,
+            "Walnut veneer","Upper walls",bevel=.003)
+    art(7.48,6.639,1.36,1.16,.64,name="3BR living artwork • flush wall mount")
+    box("Floating gallery console",7.48,6.766,.48,1.64,.341,.275,"Walnut veneer",bevel=.014)
+    box("Gallery console stone ledge",7.48,6.765,.755,1.67,.36,.037,"Travertine",bevel=.007)
+    bounds("Gallery console",6.645,6.585,8.315,6.945)
+    cylinder("Gallery console earthenware",8.01,6.75,.793,.107,.224,"Clay")
+    cylinder("Gallery console earthenware neck",8.01,6.75,1.016,.048,.086,"Clay")
+    light("Gallery art wash",(7.51,7.20,2.52),(7.51,6.65,1.60),35,.67,(1,.89,.76))
+    for xx in (6.47,7.33):
+        resort_pendant(xx,10.75,2.065,.30)
+    light("Lounge pendant glow",(6.90,10.75,2.03),(6.90,10.75,.42),42,.82,(1,.82,.63))
 
 
 WET = "Bathroom concepts"
@@ -986,12 +1191,18 @@ def layout_2br():
 
 
 def layout_3br():
+    resort_marble()
+    textile={"Normal":"terlenka_nor_gl.jpg","Roughness":"terlenka_Rough.jpg"}
+    material("Resort ivory bouclé","e3d9c8",.91,maps=textile)
+    material("Resort moss textile","686f4d",.90,maps=textile)
+    material("Resort ochre textile","ae784a",.87,maps=textile)
+    material("Resort cane","a87d4e",.66)
     schedule_slabs([
         (0,0,3,3,"spc"),(3,0,6,3,"spc"),(6,0,9.5,4.5,"spc"),
-        (0,3,1.78,5,"tile"),(1.78,4,3.12,5,"tile"),(1.78,3,6,4,"granite"),
-        (3.12,4,6,6.8,"granite"),(0,5,2.3,5.85,"tile"),(0,5.85,2.3,9,"granite"),(2.3,5,3.12,6.8,"granite"),
-        (0,9,2.3,10.5,"granite"),(2.3,6.8,3.22,10.5,"granite"),
-        (3.22,6.8,9.5,12.5,"granite"),(6,6.5,9.5,6.8,"granite"),
+        (0,3,1.78,5,"tile"),(1.78,4,3.12,5,"tile"),(1.78,3,6,4,"marble"),
+        (3.12,4,6,6.8,"marble"),(0,5,2.3,5.85,"tile"),(0,5.85,2.3,9,"granite"),(2.3,5,3.12,6.8,"marble"),
+        (0,9,2.3,10.5,"marble"),(2.3,6.8,3.22,10.5,"marble"),
+        (3.22,6.8,9.5,12.5,"marble"),(6,6.5,9.5,6.8,"marble"),
         (6,4.5,7.7,6.5,"spc"),(7.7,4.5,10.7,6.5,"tile"),(9.5,6.5,10.5,12.5,"deck"),
     ])
     for a,b in [
@@ -1080,25 +1291,10 @@ def layout_3br():
     box("Existing service appliance",.39,8.22,0,.57,.59,.86,"Ceramic")
     stove_front=kitchen(2.68,5.10,7.11,1,5.45,6.35)
     refrigerator(1.85,6.48,-1)
-    dining(4.86,7.43)
-    sofa(6.58,9.63,2.58,1)
-    rug(6.59,10.97,3.51,2.75)
-    coffee(6.59,10.79,.56)
-    media_wall(6.54,12.27,2.97)
+    table_left,table_top,table_bottom=resort_dining(4.88,7.59)
+    resort_lounge()
     lounge_cove((3.40,12.398),(9.34,12.398))
     lounge_cove((9.39,6.68),(9.39,12.30))
-    plant(8.83,11.98,1)
-    furniture("armchair","Woven cane lounge chair",8.35,11.14,.68,.60,.81,math.radians(66))
-    box("Fitted foyer console",3.394,11.14,.57,.226,.85,.277,"Walnut veneer",bevel=.01)
-    box("Foyer console stone top",3.399,11.14,.847,.241,.878,.027,"Travertine",bevel=.006)
-    panel(3.509,11.14,.61,.73,.186,"Espresso oak",axis="d")
-    box("Foyer console pull",3.524,11.14,.78,.024,.127,.015,"Brushed brass",bevel=.004)
-    box("Foyer mirror brass frame",3.294,11.14,1.02,.036,.655,.887,"Brushed brass","Upper walls",.016)
-    box("Foyer mirror",3.318,11.14,1.045,.019,.605,.837,"Brushed stainless","Upper walls",.011)
-    bounds("Fitted foyer console",3.28,10.701,3.536,11.579)
-    # The living/dining partition starts at x=6.0. Mount the complete frame
-    # on its room-side face (depth 6.56) with no unsupported overhang.
-    art(7.48,6.579,1.36,1.16,.64,name="3BR living artwork • flush wall mount")
     for x,d in [(4.2,6.0),(3.53,7.62),(6.42,7.37),(7.3,9.08),(5.54,11.0),
                 (8.21,10.24),(1.52,1.46),(4.32,1.62),(7.88,2.55),(6.94,4.63)]:
         downlight(x,d)
@@ -1112,13 +1308,14 @@ def layout_3br():
     return {
         "label":"3BR", "center":[5.1,6.2], "span":13.6,
         "checks":[{"label":"Kitchen run to dining table",
-                   "metres":round(4.075-stove_front,2),
-                   "zone":[stove_front,7.11,4.075,7.84]}],
+                   "metres":round(table_left-stove_front,2),
+                   "zone":[stove_front,table_top,table_left,table_bottom]}],
         "views":[
             ("Entry",(1.66,9.72,1.61),(5.73,9.60,1.25)),
-            ("Living",(9.10,11.55,1.63),(6.28,9.78,1.06)),
-            ("Media wall",(8.83,10.10,1.62),(6.46,12.19,1.13)),
-            ("Dining",(6.22,8.65,1.64),(6.47,6.98,1.16)),
+            ("Living",(8.99,11.80,1.63),(6.32,9.90,.90)),
+            ("Media wall",(8.97,10.57,1.62),(6.46,12.19,1.13)),
+            ("Display cabinet",(4.62,10.89,1.58),(3.51,11.12,1.16)),
+            ("Dining",(6.46,8.94,1.65),(4.83,7.42,.99)),
             ("Kitchen",(3.65,7.48,1.63),(2.72,5.61,1.17)),
             ("Common bath",(1.55,4.61,1.50),(.33,3.95,1.09)),
             ("Shower",(1.21,4.69,1.50),(2.90,4.57,1.49)),
@@ -1132,9 +1329,10 @@ def layout_3br():
                    (3.66,3.55),(3.65,2.72),(4.44,2.72)],
                   [(3.66,3.55),(2.42,3.55),(2.37,2.53)],
                   [(3.66,3.55),(6.65,3.67),(7.24,3.45),(8.15,3.13),(8.88,3.16)],
-                  [(3.55,8.62),(6.66,8.72),(6.67,7.19)],
-                  [(6.66,8.72),(8.85,8.79),(8.85,10.09),(9.18,10.64),(10.04,10.44)],
-                  [(9.18,10.64),(9.10,11.55)],
+                  [(3.55,8.62),(3.64,9.03),(6.66,9.04),(6.67,7.24)],
+                  [(6.66,9.04),(8.94,8.89),(8.94,10.09),(9.18,10.64),(10.04,10.44)],
+                  [(9.18,10.64),(8.99,11.80)],
+                  [(3.64,9.03),(4.52,9.73),(4.60,10.33),(4.62,10.68),(4.76,10.87),(4.76,11.15)],
                   [(2.42,3.55),(1.23,3.71),(1.20,4.70),(1.55,4.61),(1.21,4.69),(2.43,4.69),(2.77,4.69)],
                   [(6.65,3.67),(7.26,4.18),(7.24,5.03),(8.08,5.06),(9.46,5.20)]],
     }
