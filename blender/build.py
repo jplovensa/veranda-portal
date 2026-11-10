@@ -12,7 +12,7 @@ WEB = ROOT / "assets" / "walkthrough"
 SOURCE = ROOT / "blender"
 HEIGHT = 2.7
 GROUPS = ("Floors", "Low walls", "Upper walls", "Glazing", "Doors", "Ceiling",
-          "Furnishings", "Existing wet areas", "Interior lighting")
+          "Furnishings", "Bathroom concepts", "Interior lighting")
 MAT = {}
 FURNITURE = {}
 collections = {}
@@ -89,6 +89,8 @@ def palette():
     material("Warm stone tile","e2d7c6",.59,maps={"Normal":"travertine_NormalGL.jpg","Roughness":"travertine_Roughness.jpg"})
     material("Honed gray granite floor","6d6a65",.49,maps={"Base Color":"granite_tile_Diffuse.jpg",
              "Normal":"granite_tile_nor_gl.jpg","Roughness":"granite_tile_Rough.jpg"})
+    material("Honed limestone wainscot","c9bba5",.64,maps={"Normal":"travertine_NormalGL.jpg",
+             "Roughness":"travertine_Roughness.jpg"})
     material("Tile seam", "b4a897", .9)
     material("Linen","e4dbcd",.86,maps={"Base Color":"terlenka_Diffuse.jpg",
              "Normal":"terlenka_nor_gl.jpg","Roughness":"terlenka_Rough.jpg"})
@@ -143,7 +145,7 @@ def box(name, x, d, h, w, depth, height, mat, group="Furnishings", bevel=.009, y
         if mat=="Walnut veneer" and axis!=2:
             u,v=v,u
         scale = {"Walnut veneer":1.02,"Linen":3.6,"Warm stone tile":.78,
-                 "Travertine":1.05,"Taupe wool":4.25}.get(mat,.6)
+                 "Travertine":1.05,"Honed limestone wainscot":.95,"Taupe wool":4.25}.get(mat,.6)
         for i in face.loop_indices:
             p = obj.data.vertices[obj.data.loops[i].vertex_index].co
             obj.data.uv_layers.active.data[i].uv = (p[u] * scale + .5, p[v] * scale + .5)
@@ -696,27 +698,148 @@ def dining(x,d):
         pendant(x+i*.44,d,2.07+abs(i)*.10,.095)
 
 
-def bath_fixture(x,d,kind,axis="d"):
-    g="Existing wet areas"
-    if kind=="wc":
-        box("Retained cistern",x,d-.12,.06,.36,.155,.69,"Ceramic",g)
-        oval("Retained toilet",x,d+.13,.29,(.185,.27,.18),"Ceramic",g)
-        oval("Closed toilet seat",x,d+.15,.44,(.166,.229,.047),"Ceramic",g)
-        bounds("Existing toilet",x-.19,d-.20,x+.19,d+.40)
-    elif kind=="tub":
-        w,l=(1.40,.73) if axis=="x" else (.75,1.53)
-        box("Retained tub apron",x,d,0,w,l,.52,"Ceramic",g,.055)
-        box("Retained tub interior",x,d,.517,w-.16,l-.18,.014,"Warm stone tile",g,.015)
-        if axis=="x":
-            box("Existing bath screen",x-.24,d-l/2+.028,.54,.63,.018,1.29,"Window glass",g)
-        else:
-            box("Existing bath screen",x-w/2+.028,d-.30,.54,.018,.76,1.29,"Window glass",g)
-        bounds("Existing tub",x-w/2,d-l/2,x+w/2,d+l/2)
-    else:
-        box("Retained vanity",x,d,.05,.44,.64,.74,"Warm stone tile",g)
-        box("Retained ceramic basin",x,d,.79,.46,.62,.068,"Ceramic",g)
-        cylinder("Retained tap",x-.12,d,.85,.012,.18,"Brushed stainless",g)
-        bounds("Existing vanity",x-.23,d-.32,x+.23,d+.32)
+WET = "Bathroom concepts"
+
+
+def bath_shell(name,x,d,h,rings,mat,yaw=0,capped=True):
+    """Continuous ceramic surface from the outer base, over the rim, into the bowl."""
+    vertices=[]
+    for width,depth,z,radius in rings:
+        r=min(radius,width*.49,depth*.49)
+        for sx,sy,start in ((1,1,0),(-1,1,90),(-1,-1,180),(1,-1,270)):
+            for i in range(10):
+                angle=math.radians(start+90*i/9)
+                vertices.append((sx*(width/2-r)+r*math.cos(angle),
+                                 sy*(depth/2-r)+r*math.sin(angle),z))
+    n=40
+    bottom=(len(rings)-1)*n
+    faces=[tuple(reversed(range(n))),tuple(range(bottom,bottom+n))] if capped else []
+    faces.extend((j+i,j+(i+1)%n,j+(i+1)%n+n,j+i+n)
+                 for j in range(0,bottom,n) for i in range(n))
+    mesh=bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices,[],faces)
+    mesh.update()
+    uv=mesh.uv_layers.new()
+    for face in mesh.polygons:
+        face.use_smooth=capped and len(face.vertices)==4
+        for i in face.loop_indices:
+            px,py,_=vertices[mesh.loops[i].vertex_index]
+            uv.data[i].uv=(px+.5,py+.5)
+    obj=bpy.data.objects.new(name,mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.location=xyz(x,d,h)
+    obj.rotation_euler.z=-yaw
+    return finish(obj,name,mat,WET)
+
+
+def bath_vanity(x,d,width,yaw,depth=.43):
+    def part(name,u,v,h,w,l,z,mat,bevel=.006):
+        a,b=math.cos(yaw),math.sin(yaw)
+        return box(name,x+a*u-b*v,d+b*u+a*v,h,w,l,z,mat,WET,bevel,yaw)
+
+    part("Floating walnut vanity",0,-.012,.31,width-.026,depth-.033,.49,"Walnut veneer",.013)
+    part("Honed vanity stone top",0,0,.80,width,depth,.049,"Travertine",.012)
+    for h in (.335,.563):
+        part("Walnut drawer front",0,depth/2-.006,h,width-.036,.026,.217,"Walnut veneer")
+        part("Inset walnut drawer panel",0,depth/2+.009,h+.021,width-.115,.011,.176,"Espresso oak")
+        part("Brushed brass drawer pull",0,depth/2+.025,h+.160,.123,.022,.014,"Brushed brass")
+    bath_shell("Glazed porcelain washbasin",x,d,.843,[
+        (.37,.235,0,.085),(.43,.282,.08,.085),(.44,.287,.105,.085),(.417,.266,.112,.085),
+        (.389,.238,.103,.085),(.29,.162,.028,.077),(.258,.135,.017,.065),
+    ],"Ceramic",yaw)
+    a,b=math.cos(yaw),math.sin(yaw)
+    tap_x,tap_d=x+b*(depth/2-.033),d-a*(depth/2-.033)
+    cylinder("Brass mixer base",tap_x,tap_d,.85,.017,.185,"Brushed brass",WET)
+    part("Brass mixer spout",0,-depth/2+.078,1.016,.026,.104,.019,"Brushed brass")
+    cylinder("Basin waste",x,d,.860,.019,.005,"Brushed stainless",WET)
+    rear=-depth/2+.016
+    part("Ivory stone backsplash",0,rear,.849,width,.026,.43,"Travertine")
+    part("Slim brass mirror frame",0,rear,1.175,width-.062,.042,.845,"Brushed brass",.019)
+    part("Vanity mirror",0,rear+.026,1.197,width-.106,.021,.80,"Brushed stainless",.017)
+    part("Opal vanity light",0,rear+.042,2.059,width*.60,.052,.042,"Opal light",.012)
+    bounds("Floating bathroom vanity",x-(depth/2 if abs(b)>.5 else width/2),
+           d-(width/2 if abs(b)>.5 else depth/2),
+           x+(depth/2 if abs(b)>.5 else width/2),d+(width/2 if abs(b)>.5 else depth/2))
+
+
+def bath_wc(x,d,yaw):
+    # The rear datum is at the finished wall, with the bowl projecting into the room.
+    a,b=math.cos(yaw),math.sin(yaw)
+    cx,cd=x-b*.28,d+a*.28
+    bath_shell("Wall-hung porcelain WC",cx,cd,.205,[
+        (.26,.44,0,.13),(.34,.53,.081,.16),(.371,.56,.169,.173),(.36,.55,.186,.17),
+    ],"Ceramic",yaw)
+    bath_shell("Soft-close WC lid",cx,cd,.393,[
+        (.353,.543,0,.17),(.369,.551,.010,.172),(.349,.532,.028,.166),(.32,.503,.034,.155),
+    ],"Ceramic",yaw)
+    box("Dual flush plate",x-b*.025,d+a*.025,.85,.205,.027,.123,"Brushed brass",WET,.006,yaw)
+    for u in (-.039,.039):
+        box("Dual flush button",x+a*u-b*.042,d+b*u+a*.042,.884,.056,.009,.058,
+            "Blackened bronze",WET,.007,yaw)
+    hw,hd=(.28,.19) if abs(b)>.5 else (.19,.28)
+    bounds("Wall-hung WC",cx-hw,cd-hd,cx+hw,cd+hd)
+
+
+def bath_tub(x,d,width,depth,yaw,screen_u):
+    a,b=math.cos(yaw),math.sin(yaw)
+    def part(name,u,v,h,w,l,z,mat,bevel=.005):
+        return box(name,x+a*u-b*v,d+b*u+a*v,h,w,l,z,mat,WET,bevel,yaw)
+
+    part("Recessed stone tub plinth",0,0,0,width-.065,depth-.06,.085,"Warm stone tile")
+    part("Honed stone bath apron",0,depth/2-.031,.08,width,.060,.449,"Travertine")
+    part("Honed stone bath surround",0,-depth/2+.033,.08,width,.064,.449,"Travertine")
+    for end in (-1,1):
+        part("Honed stone bath end",end*(width/2-.031),0,.08,.060,depth-.124,.449,"Travertine")
+    bath_shell("Inset deep soaking tub",x,d,.07,[
+        (width-.19,depth-.20,0,.22),(width-.13,depth-.12,.40,.22),
+        (width-.049,depth-.041,.456,.22),(width-.056,depth-.045,.477,.22),
+        (width-.11,depth-.096,.484,.22),(width-.16,depth-.134,.460,.22),
+        (width-.29,depth-.245,.093,.22),(width-.34,depth-.30,.072,.21),
+    ],"Ceramic",yaw)
+    bath_shell("Honed stone tub rim",x,d,.520,[
+        (width-.006,depth-.006,0,.013),(width,depth,.007,.014),
+        (width-.013,depth-.013,.018,.017),(width-.060,depth-.052,.018,.22),
+    ],"Travertine",yaw,capped=False)
+    mixer=math.copysign(width*.39,screen_u)
+    part("Brass bath mixer",mixer,-depth/2+.075,.553,.023,.025,.13,"Brushed brass")
+    part("Brass bath spout",mixer,-depth/2+.133,.665,.028,.125,.022,"Brushed brass")
+    cylinder("Tub waste",x+a*mixer*.72,d+b*mixer*.72,.144,.028,.004,"Brushed stainless",WET)
+    part("Clear half bath screen",screen_u,depth/2-.034,.548,width*.42,.010,1.37,"Window glass")
+    part("Slim brass screen sill",screen_u,depth/2-.034,.547,width*.42,.023,.019,"Brushed brass")
+    hw,hd=(depth/2,width/2) if abs(b)>.5 else (width/2,depth/2)
+    bounds("Soaking tub",x-hw,d-hd,x+hw,d+hd)
+
+
+def bath_liner(a,b):
+    segment("Warm limestone wet wall",a,b,0,1,.026,"Honed limestone wainscot","Low walls",.002)
+    segment("Warm limestone wet wall",a,b,1,1.39,.026,"Warm stone tile","Upper walls",.002)
+    for h in (.60,1.20,1.80):
+        segment("Fine wet wall grout joint",a,b,h,.003,.034,"Tile seam",
+                "Low walls" if h < 1 else "Upper walls")
+
+
+def bath_shelf(x,d,yaw,width=.56):
+    a,b=math.cos(yaw),math.sin(yaw)
+    box("Floating towel ledge",x,d,1.22,width,.16,.039,"Travertine",WET,.007,yaw)
+    for u,h,w in ((-.10,1.259,.26),(-.10,1.303,.23)):
+        box("Folded ivory bath towel",x+a*u,d+b*u,h,w,.135,.045,"Warm cotton",WET,.018,yaw)
+    cylinder("Ceramic bath jar",x+a*.18,d+b*.18,1.259,.046,.102,"Ceramic",WET)
+
+
+def service_pan(x,d):
+    box("Service WC tile platform",x,d,0,.55,.56,.09,"Warm stone tile",WET,.004)
+    bath_shell("Ceramic service WC pan",x,d,.085,[
+        (.42,.48,0,.115),(.42,.48,.035,.115),(.37,.43,.042,.115),
+        (.285,.35,.036,.115),(.153,.20,.007,.073),
+    ],"Ceramic")
+    for u in (-.134,.134):
+        box("Service WC ribbed footrest",x+u,d,.124,.063,.244,.012,"Ceramic",WET,.002)
+    bounds("Service WC platform",x-.275,d-.28,x+.275,d+.28)
+
+
+def bath_light(x,d):
+    downlight(x,d)
+    light("Bathroom ceiling wash",(x,d,2.58),(x,d,.75),92,.66,(1,.92,.84))
 
 
 def balcony(x, d1, d2):
@@ -752,8 +875,8 @@ def layout_2br():
         ((0,5.5),(3.7,5.5)),((3.7,5.77),(3.88,5.77)),((4.80,5.77),(5,5.77)),
         ((5,4.9),(5,5.77)),((5,4.9),(5.12,4.9)),((5.91,4.9),(6.5,4.9)),((5,5.77),(5,8.5)),
         ((6.5,4.9),(6.5,5.5)),((6.5,5.5),(6.95,5.5)),((7.79,5.5),(8.5,5.5)),
-        ((6.5,5.5),(6.5,7.5)),((5,7.5),(7.07,7.5)),((7.87,7.5),(8.5,7.5)),
-        ((6.5,7.5),(6.5,8.5)),
+        ((6.5,5.5),(6.5,7.5)),((5,7.5),(6.84,7.5)),((7.58,7.5),(8.5,7.5)),
+        ((6.5,7.5),(6.5,7.62)),((6.5,8.37),(6.5,8.5)),
     ]:
         wall(a,b)
     door((5.12,4.9),(5.91,4.9),(0,1))
@@ -761,7 +884,8 @@ def layout_2br():
     door((3.7,4.43),(3.7,5.28),(-1,0))
     door((3.88,5.77),(4.80,5.77),(0,1))
     door((6.95,5.5),(7.79,5.5),(0,1))
-    door((7.07,7.5),(7.87,7.5),(0,1))
+    door((6.84,7.5),(7.58,7.5),(0,-1))
+    door((6.5,8.37),(6.5,7.62),(-1,0))
     opening((0,0),(0,3),sill=0,panels=3,open_panel=1)
     for a,b in [((0,3.82),(0,4.8)),((0,6.24),(0,7.15)),((.95,8.5),(3.82,8.5))]:
         opening(a,b)
@@ -808,11 +932,25 @@ def layout_2br():
     cylinder("Vanity stool",.78,7.45,0,.18,.44,"Linen")
     bounds("Vanity",.09,7.03,.49,7.87)
     bounds("Vanity stool",.60,7.27,.96,7.63)
-    bath_fixture(5.75,7.04,"tub","x")
-    bath_fixture(6.09,5.50,"vanity")
-    bath_fixture(6.13,6.15,"wc")
-    bath_fixture(7.71,8.02,"wc")
-    box("Existing utility appliance",8.02,7.03,0,.60,.63,.86,"Ceramic","Existing wet areas")
+    bath_liner((6.421,4.97),(6.421,7.43))
+    bath_liner((5.07,7.421),(6.42,7.421))
+    bath_tub(5.75,7.045,1.35,.72,math.pi,-.37)
+    bath_vanity(6.185,5.36,.74,math.pi/2)
+    bath_wc(6.405,6.05,math.pi/2)
+    bath_shelf(6.32,6.05,math.pi/2,.49)
+    bath_light(5.60,5.90)
+    bath_light(5.75,7.00)
+    # Utility entry leads to the service WC, with a separate rear laundry niche.
+    column(8.265,8.01,.34,.86)
+    service_pan(7.76,8.025)
+    box("Utility washer",5.40,8.08,0,.59,.59,.85,"Ceramic",WET,.024)
+    cylinder("Washer door trim",5.40,7.775,.47,.177,.038,"Brushed stainless",WET).rotation_euler.x=math.pi/2
+    cylinder("Washer door glazing",5.40,7.754,.47,.143,.030,"Screen",WET).rotation_euler.x=math.pi/2
+    bounds("Utility washer",5.105,7.785,5.695,8.375)
+    box("Laundry supply cabinet",5.43,8.273,1.20,.66,.31,.62,"Walnut veneer",WET)
+    bath_light(6.15,8.01)
+    bath_light(7.69,7.11)
+    bath_light(7.74,8.08)
     for x,d in [(1.3,1.25),(3.54,1.3),(4.53,3.70),(7.23,3.7),(7.27,4.74),
                 (1.35,4.1),(2.57,4.5),(1.3,6.46),(3.32,7.28)]:
         downlight(x,d)
@@ -833,6 +971,7 @@ def layout_2br():
             ("Kitchen",(7.16,5.14,1.65),(7.15,3.91,1.00)),
             ("Island",(4.65,3.47,1.62),(7.02,4.20,1.18)),
             ("Bath access",(4.60,4.27,1.61),(5.51,4.99,1.13)),
+            ("Bathroom",(5.47,4.89,1.51),(6.10,6.23,1.06)),
             ("Bedroom 1",(3.82,7.91,1.61),(1.93,6.08,1.16)),
             ("Bedroom 2",(3.22,4.92,1.58),(1.28,3.55,1.09)),
             ("Balcony",(-.50,1.66,1.61),(2.14,1.36,1.2)),
@@ -841,7 +980,8 @@ def layout_2br():
                    (3.22,4.92)],[(4.36,4.88),(4.34,6.28),(4.12,6.87),(3.82,7.91)],
                   [(6.20,2.26),(6.14,2.93),(6.36,3.27),(7.20,3.27),(7.16,5.14)],
                   [(4.87,2.37),(3.62,2.40),(3.45,2.30),(3.17,2.30),(.76,2.27),(.51,1.69),(-.50,1.66)],
-                  [(4.36,2.55),(4.36,4.28),(4.60,4.27),(5.53,4.40),(5.53,5.26)]],
+                  [(4.36,2.55),(4.36,4.28),(4.60,4.27),(5.53,4.40),(5.53,5.26),(5.44,5.35),(5.45,6.44)],
+                  [(7.16,5.14),(7.37,5.27),(7.37,6.55),(7.23,7.56),(7.23,8.04),(6.18,8.02)]],
     }
 
 
@@ -871,7 +1011,7 @@ def layout_3br():
     for a,b,s in [
         ((2.84,3),(1.92,3),(0,-1)),((3.15,3),(4.07,3),(0,-1)),
         ((6,3.15),(6,4.1),(1,0)),((1.78,3.15),(1.78,3.91),(-1,0)),
-        ((7.7,4.5),(7.7,5.38),(1,0)),((.75,5.85),(1.44,5.85),(0,-1)),
+        ((7.7,4.5),(7.7,5.38),(1,0)),((1.44,5.85),(.75,5.85),(0,-1)),
         ((2.3,8.14),(2.3,8.94),(-1,0)),((2.3,10.35),(2.3,9.24),(-1,0)),
     ]:
         door(a,b,s)
@@ -905,14 +1045,39 @@ def layout_3br():
     wardrobe(6.34,5.36,1.10,"d",1)
     desk(8.57,4.13,1.05,-1)
     art(8.52,4.421,1.36,.88,.57,flip=-1)
-    bath_fixture(.36,3.62,"vanity")
-    bath_fixture(.45,4.51,"wc")
-    box("Existing shower tray",2.47,4.54,0,1.16,.84,.07,"Ceramic","Existing wet areas")
-    bath_fixture(.43,5.36,"wc")
-    bath_fixture(8.23,6.07,"vanity")
-    bath_fixture(9.19,5.92,"wc")
-    bath_fixture(10.14,5.51,"tub")
-    box("Existing service appliance",.39,8.22,0,.57,.59,.86,"Ceramic","Existing wet areas")
+    bath_liner((.079,3.07),(.079,4.93))
+    bath_liner((1.83,4.079),(3.04,4.079))
+    bath_liner((3.041,4.08),(3.041,4.93))
+    bath_vanity(.31,3.50,.78,-math.pi/2)
+    bath_wc(.095,4.46,-math.pi/2)
+    bath_shelf(.18,4.46,-math.pi/2)
+    box("Flush honed shower floor",2.55,4.51,.002,.97,.84,.012,"Travertine",WET,.002)
+    box("Linear shower waste",2.95,4.52,.014,.030,.56,.007,"Brushed stainless",WET,.002)
+    box("Clear walk-in shower screen",2.07,4.254,.017,.011,.34,2.04,"Window glass",WET,.001)
+    box("Brass shower glass channel",2.07,4.254,.011,.026,.34,.022,"Brushed brass",WET,.002)
+    bounds("Fixed shower screen",2.057,4.084,2.083,4.424)
+    box("Shower mixer wall plate",3.014,4.60,.938,.032,.135,.162,"Brushed brass",WET,.008)
+    box("Thermostatic mixer body",2.979,4.60,.975,.081,.158,.050,"Brushed brass",WET,.011)
+    box("Shower mixer lever",2.935,4.638,.991,.043,.060,.013,"Blackened bronze",WET,.004)
+    cylinder("Rain shower riser",2.98,4.60,1.015,.011,1.015,"Brushed brass",WET)
+    box("Rain shower upper bracket",3.004,4.60,1.793,.072,.033,.035,"Brushed brass",WET,.006)
+    box("Rain shower arm",2.84,4.60,2.015,.29,.025,.025,"Brushed brass",WET)
+    cylinder("Rain shower head",2.70,4.60,1.994,.113,.027,"Brushed brass",WET)
+    box("Recess-style shower shelf",2.58,4.158,1.07,.52,.141,.042,"Travertine",WET)
+    cylinder("Shower bottle",2.65,4.146,1.112,.032,.141,"Clay",WET)
+    bath_light(.94,3.96)
+    bath_light(2.60,4.53)
+    service_pan(.465,5.405)
+    bath_light(.86,5.47)
+    bath_liner((7.77,6.421),(10.63,6.421))
+    bath_liner((10.621,4.57),(10.621,6.42))
+    bath_vanity(8.30,6.185,.96,math.pi)
+    bath_wc(9.31,6.407,math.pi)
+    bath_shelf(9.31,6.319,math.pi)
+    bath_tub(10.19,5.50,1.78,.83,math.pi/2,.45)
+    bath_light(8.58,5.37)
+    bath_light(10.05,5.72)
+    box("Existing service appliance",.39,8.22,0,.57,.59,.86,"Ceramic")
     stove_front=kitchen(2.68,5.10,7.11,1,5.45,6.35)
     refrigerator(1.85,6.48,-1)
     dining(4.86,7.43)
@@ -955,6 +1120,9 @@ def layout_3br():
             ("Media wall",(8.83,10.10,1.62),(6.46,12.19,1.13)),
             ("Dining",(6.22,8.65,1.64),(6.47,6.98,1.16)),
             ("Kitchen",(3.65,7.48,1.63),(2.72,5.61,1.17)),
+            ("Common bath",(1.55,4.61,1.50),(.33,3.95,1.09)),
+            ("Shower",(1.21,4.69,1.50),(2.90,4.57,1.49)),
+            ("Ensuite",(8.08,5.06,1.52),(9.55,6.04,1.06)),
             ("Bedroom 1",(8.88,3.16,1.61),(7.55,.82,1.16)),
             ("Bedroom 2",(4.44,2.72,1.60),(4.02,.72,1.12)),
             ("Bedroom 3",(2.37,2.53,1.60),(1.16,.88,1.12)),
@@ -966,7 +1134,9 @@ def layout_3br():
                   [(3.66,3.55),(6.65,3.67),(7.24,3.45),(8.15,3.13),(8.88,3.16)],
                   [(3.55,8.62),(6.66,8.72),(6.67,7.19)],
                   [(6.66,8.72),(8.85,8.79),(8.85,10.09),(9.18,10.64),(10.04,10.44)],
-                  [(9.18,10.64),(9.10,11.55)]],
+                  [(9.18,10.64),(9.10,11.55)],
+                  [(2.42,3.55),(1.23,3.71),(1.20,4.70),(1.55,4.61),(1.21,4.69),(2.43,4.69),(2.77,4.69)],
+                  [(6.65,3.67),(7.26,4.18),(7.24,5.03),(8.08,5.06),(9.46,5.20)]],
     }
 
 
@@ -1049,7 +1219,7 @@ def run(unit,builder):
     scene.name="Veranda • "+data["label"]
     scene.unit_settings.system="METRIC"
     scene["Drawing basis"]="UNIT "+data["label"]+" PDF datums. Traced openings, assumed 2.7 m ceiling and concept furniture."
-    scene["Existing wet areas"]="Context only. No proposed changes."
+    scene["Bathroom concepts"]="Fixture layouts and finishes within existing wet zones. Verify dimensions and services on site."
     scene["Kitchen clearance"]="; ".join(f'{c["label"]}: {c["metres"]:.2f} m' for c in data["checks"])
     cameras={name:camera(name,loc,target) for name,loc,target in data["views"]}
     x,d=data["center"]
