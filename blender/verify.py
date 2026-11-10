@@ -37,6 +37,9 @@ def verify(unit):
     by_name = {s["name"]: s["rect"] for s in data["solids"]}
     if unit == "3br":
         table = by_name["Dining table"]
+        assert "Woven resort lounge chair" not in by_name, "3BR: lounge chairs are still present"
+        assert "Work corner desk" in by_name and "Work corner chair" in by_name
+        assert math.isclose(by_name["Kitchen worktop"][3], 8.10), "3BR: kitchen stops short of the service doorway"
         chairs = [s["rect"] for s in data["solids"] if s["name"] == "Six-seat dining chair"]
         assert len(chairs) == 6, "3BR: the dining table needs six chairs"
         assert sum((rect[0]+rect[2])/2 < table[0] for rect in chairs) == 3

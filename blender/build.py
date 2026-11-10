@@ -535,7 +535,7 @@ def coffee(x,d,w=.54):
     bounds("Coffee table",x-w,d-w*.6,x+w,d+w*.6)
 
 
-def media_wall(x,d,w):
+def media_wall(x,d,w,console_tv=False):
     g="Upper walls"
     # A slim continuous cabinet mounts to the wall behind a recessed shadow line.
     box("Recessed floating cabinet support",x,d+.085,.10,w-.13,.17,.16,"Espresso oak")
@@ -559,9 +559,20 @@ def media_wall(x,d,w):
         "Ivory plaster",g,.009)
     panel(reveal_x,d+.019,.675,reveal_w-.29,1.49,"Warm white millwork",group=g)
     tv_w=min(1.55,reveal_w-.29)
-    box("Flush TV mount",reveal_x,d-.006,.90,tv_w-.20,.045,.61,"Espresso oak",g,.012)
-    box("Thin bronze screen bezel",reveal_x,d-.030,.835,tv_w,.044,.827,"Blackened bronze",g,.009)
-    box("Television display",reveal_x,d-.055,.853,tv_w-.035,.009,.791,"Screen",g,.004)
+    if console_tv:
+        group="Furnishings"
+        tv_d=d-.050
+        for a in (-1,1):
+            foot_x=reveal_x+a*.51
+            box("Television tabletop foot",foot_x,tv_d,.528,.129,.207,.019,"Blackened bronze",group,.006)
+            box("Television stand riser",foot_x,tv_d,.547,.049,.054,.090,"Blackened bronze",group,.006)
+        tv_h=.632
+    else:
+        group=g
+        tv_d,tv_h=d-.030,.835
+        box("Flush TV mount",reveal_x,d-.006,.90,tv_w-.20,.045,.61,"Espresso oak",g,.012)
+    box("Thin bronze screen bezel",reveal_x,tv_d,tv_h,tv_w,.044,.827,"Blackened bronze",group,.009)
+    box("Television display",reveal_x,tv_d-.025,tv_h+.018,tv_w-.035,.009,.791,"Screen",group,.004)
 
     box("Display niche walnut back",shelf_x,d+.132,.528,column_w,.055,1.782,"Walnut veneer",g)
     for dx in (-1,1):
@@ -756,11 +767,11 @@ def upholstery(name,x,d,h,w,depth,height,mat,tilt=0,yaw=0):
 
 
 def family_sectional():
-    x,d=6.75,10.03
+    x,d=6.75,9.84
     for a in (5.23,8.27):
         box("Recessed smoked oak sectional plinth",a,d,.037,.42,.76,.12,"Espresso oak",bevel=.035)
     upholstery("Low upholstered sectional deck",x,d,.228,3.55,1.06,.27,"Resort ivory bouclé")
-    upholstery("Left chaise base",5.52,10.61,.228,.79,1.27,.27,"Resort ivory bouclé")
+    upholstery("Left chaise base",5.52,d+.58,.228,.79,1.27,.27,"Resort ivory bouclé")
     for a in (4.99,8.51):
         upholstery("Pillow-top sectional arm",a,d,.487,.245,1.085,.37,"Resort ivory bouclé")
     for a in (5.52,6.34,7.16,7.98):
@@ -775,9 +786,9 @@ def family_sectional():
         (7.81,9.42,.671,.44,.40,.30,-.15,"Resort moss textile"),
         (8.16,9.52,.611,.40,.27,.40,-.22,"Resort ochre textile"),
     ]:
-        upholstery("Layered accent cushion",a,depth+.47,z,w,.17,h,mat,tilt,yaw)
-    bounds("Four-seat family sectional",4.84,9.48,8.66,10.60)
-    bounds("Sectional chaise extension",5.07,10.60,5.97,11.27)
+        upholstery("Layered accent cushion",a,depth+d-9.56,z,w,.17,h,mat,tilt,yaw)
+    bounds("Four-seat family sectional",4.84,d-.55,8.66,d+.57)
+    bounds("Sectional chaise extension",5.07,d+.57,5.97,d+1.24)
 
 
 def resort_pendant(x,d,h,r):
@@ -873,18 +884,10 @@ def resort_lounge():
     rounded_slab("Low nesting travertine table",7.21,11.65,.285,.55,.46,.064,.22,"Travertine")
     cylinder("Nesting table walnut drum",7.21,11.65,.018,.16,.268,"Walnut veneer")
     bounds("Nesting table",6.935,11.42,7.485,11.88)
-    for x,d,a in [(4.21,11.88,1.75),(8.07,11.30,-1.22)]:
-        furniture("armchair","Woven resort lounge chair",x,d,.77,.77,.90,a)
     resort_display_cabinet()
-    cylinder("Reading lamp floor base",8.52,11.91,0,.14,.035,"Blackened bronze")
-    cylinder("Reading lamp bronze stem",8.52,11.91,.035,.012,1.16,"Brushed brass")
-    cylinder("Linen reading lamp shade",8.52,11.91,1.16,.159,.255,"Linen")
-    cylinder("Reading lamp diffuser",8.52,11.91,1.159,.145,.013,"Opal light")
-    bounds("Lounge reading lamp",8.36,11.75,8.68,12.07)
-    light("Lounge reading lamp pool",(8.52,11.91,1.14),(8.02,11.37,.51),22,.25,(1,.79,.53))
     for x,d,size in ((8.87,7.30,1.28),(8.91,12.21,.83)):
         plant(x,d,size)
-    media_wall(6.45,12.27,3.33)
+    media_wall(6.45,12.27,3.33,console_tv=True)
     for x in (3.84,4.28,8.53):
         panel(x,12.412,.22,.32,2.20,"Warm white millwork",group="Upper walls")
     box("Gallery wall walnut backing",7.50,6.579,.59,2.34,.029,1.69,"Walnut veneer","Upper walls")
@@ -892,11 +895,22 @@ def resort_lounge():
         box("Fine walnut gallery battens",6.415+i*.098,6.602,.597,.046,.037,1.674,
             "Walnut veneer","Upper walls",bevel=.003)
     art(7.48,6.639,1.36,1.16,.64,name="3BR living artwork • flush wall mount")
-    box("Floating gallery console",7.48,6.766,.48,1.64,.341,.275,"Walnut veneer",bevel=.014)
-    box("Gallery console stone ledge",7.48,6.765,.755,1.67,.36,.037,"Travertine",bevel=.007)
-    bounds("Gallery console",6.645,6.585,8.315,6.945)
-    cylinder("Gallery console earthenware",8.01,6.75,.793,.107,.224,"Clay")
-    cylinder("Gallery console earthenware neck",8.01,6.75,1.016,.048,.086,"Clay")
+    x,d=7.48,6.859
+    rounded_slab("Walnut worktop",x,d,.725,1.42,.48,.048,.035,"Walnut veneer")
+    box("Recessed desk support",x,d-.178,.585,1.20,.095,.14,"Espresso oak")
+    box("Slim desk drawer",x+.47,d,.638,.37,.44,.088,"Walnut veneer",bevel=.006)
+    box("Desk drawer brass pull",x+.47,d+.225,.673,.107,.016,.012,"Brushed brass",bevel=.003)
+    bounds("Work corner desk",x-.71,d-.24,x+.71,d+.24)
+    furniture("dining-chair","Work corner chair",x,d+.49,.44,.46,.83,math.pi)
+    box("Laptop keyboard",x-.11,d,.773,.31,.195,.018,"Brushed stainless",bevel=.006)
+    laptop=box("Laptop display lid",x-.11,d-.087,.786,.31,.017,.186,"Blackened bronze",bevel=.004)
+    laptop.rotation_euler.x=math.radians(-11)
+    box("Notebook",x+.25,d+.061,.774,.17,.13,.013,"Paper",bevel=.003,yaw=.16)
+    cylinder("Task lamp base",x+.53,d-.07,.773,.07,.018,"Blackened bronze")
+    cylinder("Task lamp stem",x+.53,d-.07,.791,.009,.252,"Brushed brass")
+    cylinder("Task lamp shade",x+.53,d-.07,1.043,.086,.10,"Linen")
+    cylinder("Task lamp diffuser",x+.53,d-.07,1.041,.075,.006,"Opal light")
+    light("Desk task pool",(x+.53,d-.07,1.035),(x+.36,d,.77),13,.16,(1,.84,.67))
     light("Gallery art wash",(7.51,7.20,2.52),(7.51,6.65,1.60),35,.67,(1,.89,.76))
     for xx in (6.47,7.33):
         resort_pendant(xx,10.75,2.065,.30)
@@ -1289,9 +1303,9 @@ def layout_3br():
     bath_light(8.58,5.37)
     bath_light(10.05,5.72)
     box("Existing service appliance",.39,8.22,0,.57,.59,.86,"Ceramic")
-    stove_front=kitchen(2.68,5.10,7.11,1,5.45,6.35)
+    stove_front=kitchen(2.68,5.07,8.10,1,5.45,6.35)
     refrigerator(1.85,6.48,-1)
-    table_left,table_top,table_bottom=resort_dining(4.88,7.59)
+    table_left,table_top,table_bottom=resort_dining(4.88,7.44)
     resort_lounge()
     lounge_cove((3.40,12.398),(9.34,12.398))
     lounge_cove((9.39,6.68),(9.39,12.30))
@@ -1312,11 +1326,12 @@ def layout_3br():
                    "zone":[stove_front,table_top,table_left,table_bottom]}],
         "views":[
             ("Entry",(1.66,9.72,1.61),(5.73,9.60,1.25)),
-            ("Living",(8.99,11.80,1.63),(6.32,9.90,.90)),
-            ("Media wall",(8.97,10.57,1.62),(6.46,12.19,1.13)),
+            ("Living",(4.10,11.13,1.63),(7.32,10.28,1.03)),
+            ("Media wall",(8.63,11.36,1.62),(6.67,12.19,1.05)),
             ("Display cabinet",(4.62,10.89,1.58),(3.51,11.12,1.16)),
             ("Dining",(6.46,8.94,1.65),(4.83,7.42,.99)),
-            ("Kitchen",(3.65,7.48,1.63),(2.72,5.61,1.17)),
+            ("Kitchen",(3.79,8.96,1.65),(2.73,6.40,1.05)),
+            ("Work corner",(8.42,8.20,1.61),(7.48,6.89,1.05)),
             ("Common bath",(1.55,4.61,1.50),(.33,3.95,1.09)),
             ("Shower",(1.21,4.69,1.50),(2.90,4.57,1.49)),
             ("Ensuite",(8.08,5.06,1.52),(9.55,6.04,1.06)),
@@ -1329,10 +1344,12 @@ def layout_3br():
                    (3.66,3.55),(3.65,2.72),(4.44,2.72)],
                   [(3.66,3.55),(2.42,3.55),(2.37,2.53)],
                   [(3.66,3.55),(6.65,3.67),(7.24,3.45),(8.15,3.13),(8.88,3.16)],
-                  [(3.55,8.62),(3.64,9.03),(6.66,9.04),(6.67,7.24)],
+                  [(3.55,8.62),(3.64,9.03),(6.66,9.04),(6.50,7.25)],
                   [(6.66,9.04),(8.94,8.89),(8.94,10.09),(9.18,10.64),(10.04,10.44)],
-                  [(9.18,10.64),(8.99,11.80)],
-                  [(3.64,9.03),(4.52,9.73),(4.60,10.33),(4.62,10.68),(4.76,10.87),(4.76,11.15)],
+                  [(9.18,10.64),(8.99,11.71),(8.63,11.36)],
+                  [(6.66,9.04),(8.42,8.20)],
+                  [(3.64,9.03),(3.79,8.96),(3.53,8.59),(1.84,8.58)],
+                  [(3.64,9.03),(4.52,9.73),(4.60,10.33),(4.62,10.68),(4.76,10.87),(4.76,11.15),(4.10,11.13)],
                   [(2.42,3.55),(1.23,3.71),(1.20,4.70),(1.55,4.61),(1.21,4.69),(2.43,4.69),(2.77,4.69)],
                   [(6.65,3.67),(7.26,4.18),(7.24,5.03),(8.08,5.06),(9.46,5.20)]],
     }
