@@ -17,6 +17,7 @@ for (let i = 1; i <= 5; i++) for (const ext of ['mp4', 'jpg']) required.add(`ass
 for (const name of ['living', 'kitchen', 'main_bedroom', 'guest_concept', 'entrance']) required.add(`assets/${name}.jpg`);
 for (const room of ['living','kitchen','main','second','third','entrance']) for (const suffix of ['.webp','-thumb.webp']) required.add('assets/3br-resort/'+room+suffix);
 required.add('assets/walkthrough/studio-garden.hdr');
+required.add('assets/walkthrough/2br-bedroom.jpg');
 for (const unit of ['2br', '3br']) for (const ext of ['glb', 'json']) required.add(`assets/walkthrough/${unit}.${ext}`);
 for (const path of required) if (!statSync(resolve(output, path)).size) throw Error(`Empty build asset: ${path}`);
 console.log(`Built _site with ${required.size} verified asset references, including all five films.`);

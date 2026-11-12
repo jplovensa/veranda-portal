@@ -17,6 +17,7 @@ MAT = {}
 FURNITURE = {}
 collections = {}
 solids = []
+OPERABLE = []
 floors = []
 
 
@@ -181,6 +182,42 @@ def oval(name, x, d, h, scale, mat, group="Furnishings", tilt=0):
 
 def bounds(name, x1, d1, x2, d2, kind="furniture"):
     solids.append({"name": name, "kind": kind, "rect": [round(n, 3) for n in (x1, d1, x2, d2)]})
+
+
+def moving_start():
+    return set(bpy.data.objects)
+
+
+def moving_finish(before,label,kind,x,d,angle=0,travel=(0,0),initial=0,collection="Furnishings"):
+    objects=[obj for obj in bpy.data.objects if obj not in before and obj.type=="MESH"]
+    if not objects:
+        return
+    name=f"Operable_{len(OPERABLE):03d}"
+    root=bpy.data.objects.new(name,None)
+    collections[collection].objects.link(root)
+    root.location=xyz(x,d,0)
+    bpy.context.view_layer.update()
+    points=[]
+    for obj in objects:
+        points.extend((obj.matrix_world @ Vector(corner)) for corner in obj.bound_box)
+        obj.parent=root
+        obj.matrix_parent_inverse=root.matrix_world.inverted()
+        obj["motion_id"]=name
+    OPERABLE.append({"id":name,"label":label,"kind":kind,"pivot":[x,d],
+                     "angle":angle,"travel":list(travel),"initial":initial,
+                     "rect":[min(v.x for v in points)-x,min(-v.y for v in points)-d,
+                             max(v.x for v in points)-x,max(-v.y for v in points)-d]})
+    return name
+
+
+def drawer_tray(x,d,z,width,depth,yaw):
+    a,b=math.cos(yaw),math.sin(yaw)
+    def part(name,u,v,h,w,l,height):
+        box(name,x+a*u-b*v,d+b*u+a*v,h,w,l,height,"Espresso oak",bevel=.003,yaw=yaw)
+    part("Drawer tray bottom",0,-depth/2,z,width,depth,.018)
+    for side in (-1,1):
+        part("Drawer box side",side*(width/2-.01),-depth/2,z+.018,.018,depth,.10)
+    part("Drawer box back",0,-depth+.01,z+.018,width,.018,.10)
 
 
 def asset_meshes(key):
@@ -396,6 +433,7 @@ def door(a,b, swing, leaf=True):
         box("Door casing",x0,d0,0,.055,.055,2.16,"Walnut veneer","Doors",.004)
     segment("Door head casing",a,b,2.12,.045,.07,"Walnut veneer","Doors",.004)
     if leaf:
+        before=moving_start()
         length=math.dist(a,b)-.045
         dx,dd=swing
         end=(x+dx*length,d+dd*length)
@@ -406,6 +444,10 @@ def door(a,b, swing, leaf=True):
         for offset in (-.038,.038):
             box("Door lever",x+dx*(length-.13)+dd*offset,d+dd*(length-.13)+dx*offset,
                 1.02,.08 if dx else .027,.027 if dx else .08,.019,"Blackened bronze","Doors",.004)
+        closed=-math.atan2(b[1]-a[1],b[0]-a[0])+math.atan2(dd,dx)
+        closed=math.atan2(math.sin(closed),math.cos(closed))
+        motion=moving_finish(before,"Room door","door",x,d,closed,initial=1,collection="Doors")
+        solids[-1]["motion"]=motion
 
 
 def ceiling(x1,d1,x2,d2):
@@ -539,14 +581,20 @@ def media_wall(x,d,w,console_tv=False):
     g="Upper walls"
     # A slim continuous cabinet mounts to the wall behind a recessed shadow line.
     box("Recessed floating cabinet support",x,d+.085,.10,w-.13,.17,.16,"Espresso oak")
-    box("Floating walnut carcass",x,d,.185,w,.345,.31,"Walnut veneer",bevel=.009)
+    box("Media cabinet back",x,d+.150,.185,w,.034,.31,"Walnut veneer")
+    box("Media cabinet bottom",x,d,.185,w,.345,.035,"Walnut veneer")
+    for edge in (-1,1):
+        box("Media cabinet end",x+edge*(w/2-.018),d,.185,.036,.345,.31,"Walnut veneer")
     box("Honed stone media ledge",x,d,.495,w+.038,.376,.033,"Travertine",bevel=.005)
     for i in (-1,0,1):
         px=x+i*w/3
+        before=moving_start()
         box("Inset walnut media drawer",px,d-.179,.214,w/3-.017,.026,.252,
             "Walnut veneer",bevel=.006)
         panel(px,d-.194,.230,w/3-.077,.212,"Espresso oak")
         box("Slim aged brass pull",px,d-.207,.424,.115,.014,.012,"Brushed brass",bevel=.004)
+        drawer_tray(px,d-.179,.237,w/3-.06,.25,math.pi)
+        moving_finish(before,"TV console drawer","drawer",px,d-.179,travel=(0,-.27))
     bounds("Floating media cabinet",x-w/2-.019,d-.214,x+w/2+.019,d+.188)
 
     column_w=.44
@@ -603,49 +651,91 @@ def bed(x,d,w,face=1,length=2.02):
 
 
 def bedside(x,d):
-    box("Floating bedside drawer",x,d,.19,.38,.36,.28,"Walnut veneer",bevel=.023)
-    box("Bedside top",x,d,.47,.39,.37,.027,"Travertine")
+    box("Bedside carcass back",x,d-.158,.19,.38,.035,.28,"Walnut veneer")
+    box("Bedside carcass floor",x,d,.19,.38,.36,.025,"Walnut veneer")
+    for edge in (-1,1):
+        box("Bedside carcass side",x+edge*.177,d,.19,.026,.36,.28,"Walnut veneer")
+    box("Bedside top",x,d,.47,.39,.37,.027,"Travertine",bevel=.007)
+    before=moving_start()
+    box("Bedside drawer front",x,d+.18,.215,.355,.026,.236,"Walnut veneer",bevel=.006)
+    box("Bedside drawer pull",x,d+.202,.395,.10,.019,.012,"Brushed brass",bevel=.003)
+    drawer_tray(x,d+.18,.225,.325,.29,0)
+    moving_finish(before,"Bedside drawer","drawer",x,d+.18,travel=(0,.22))
     cylinder("Bedside brass lamp",x,d,.50,.06,.16,"Brushed brass")
     oval("Bedside opal globe",x,d,.75,(.096,.096,.10),"Opal light")
-    bounds("Bedside drawer",x-.20,d-.19,x+.20,d+.19)
+    bounds("Bedside drawer",x-.20,d-.19,x+.20,d+.21)
 
 
-def wardrobe(x,d,width,axis="x",face=1):
+def wardrobe(x,d,width,axis="x",face=1,sliding=False):
     w,l=(width,.55) if axis=="x" else (.55,width)
-    box("Walnut wardrobe carcass",x,d,0,w,l,2.42,"Walnut veneer")
+    yaw=0 if axis=="x" else math.pi/2
+    def part(name,u,v,z,ww,ll,hh,mat="Walnut veneer"):
+        px,pd=(x+u,d+v) if axis=="x" else (x-v,d+u)
+        return box(name,px,pd,z,ww,ll,hh,mat,yaw=yaw)
+    back=-face*.256 if axis=="x" else face*.256
+    part("Wardrobe back",0,back,0,width,.032,2.42)
+    for edge in (-1,1):
+        part("Wardrobe carcass side",edge*(width/2-.018),0,0,.036,.55,2.42)
+    for z in (.04,.50,2.384):
+        part("Wardrobe interior shelf",0,0,z,width-.06,.50,.036)
+    for i in range(3):
+        part("Folded wardrobe linen",-.19+i*.18,0,.536,.15,.34,.065,"Warm cotton")
     doors=math.ceil(width/.56)
     for i in range(doors):
-        off=(i+.5)*width/doors-width/2
-        px,pd=(x+off,d+face*.278) if axis=="x" else (x+face*.278,d+off)
-        panel(px,pd,.11,width/doors-.052,2.23,"Espresso oak",axis=axis)
+        span=width/doors
+        off=(i+.5)*span-width/2
+        front=face*(.278+(.035*(i%2) if sliding else 0))
+        px,pd=(x+off,d+front) if axis=="x" else (x+front,d+off)
+        before=moving_start()
+        part("Wardrobe door",off,front if axis=="x" else -front,.055,span-.012,.028,2.31)
+        panel(px,pd,.11,span-.052,2.23,"Espresso oak",axis=axis)
         hx,hd=(px+.13,pd+face*.022) if axis=="x" else (px+face*.022,pd+.13)
         box("Wardrobe pull",hx,hd,1.0,.016,.018,.21,"Brushed brass",bevel=.004)
+        side=-1 if i%2==0 else 1
+        if sliding:
+            moving_finish(before,"Wardrobe sliding door","sliding",px,pd,
+                          travel=(-side*span*.72,0) if axis=="x" else (0,-side*span*.72))
+        else:
+            pivot=(px+side*span/2,pd) if axis=="x" else (px,pd+side*span/2)
+            angle=side*face*math.pi*.48*(1 if axis=="x" else -1)
+            moving_finish(before,"Wardrobe door","cabinet",*pivot,angle=angle)
     bounds("Wardrobe",x-w/2-.018,d-l/2-.018,x+w/2+.018,d+l/2+.018)
 
 
-def desk(x,d,w=.95,face=1):
-    box("Writing surface",x,d,.72,w,.44,.05,"Warm white millwork",bevel=.017)
+def desk(x,d,w=.95,face=1,depth=.44):
+    box("Writing surface",x,d,.72,w,depth,.05,"Warm white millwork",bevel=.017)
     for i in (-1,1):
-        box("Walnut desk end",x+i*(w/2-.043),d,.025,.052,.37,.70,"Walnut veneer")
+        box("Walnut desk end",x+i*(w/2-.043),d,.025,.052,depth-.07,.70,"Walnut veneer")
     box("Open book",x-.13,d,.77,.22,.15,.02,"Paper",yaw=.1)
-    bounds("Desk",x-w/2,d-.22,x+w/2,d+.22)
-    chair(x,d+.47*face,-face)
+    bounds("Desk",x-w/2,d-depth/2,x+w/2,d+depth/2)
+    chair(x,d+(depth/2+.25)*face,-face)
 
 
 def refrigerator(x,d,face):
-    box("Refrigerator",x,d,.01,.62,.64,1.81,"Brushed stainless",bevel=.034)
+    box("Refrigerator back",x-face*.291,d,.01,.038,.64,1.81,"Brushed stainless",bevel=.012)
+    for edge in (-1,1):
+        box("Refrigerator side",x,d+edge*.302,.01,.62,.036,1.81,"Brushed stainless",bevel=.012)
+    for z in (.01,.65,1.79):
+        box("Refrigerator divider",x,d,z,.62,.59,.03,"Ceramic")
+    for z in (.24,.45,.91,1.20,1.49):
+        box("Refrigerator glass shelf",x,d,z,.54,.55,.017,"Window glass",bevel=.003)
     for z in (.08,.70):
         h=.55 if z<.5 else 1.095
+        before=moving_start()
         box("Refrigerator door",x+face*.327,d,z,.055,.615,h,"Brushed stainless",bevel=.018)
         box("Refrigerator pull",x+face*.366,d-.195,z+.30,.027,.021,.20,
             "Blackened bronze")
+        moving_finish(before,"Refrigerator door","cabinet",x+face*.327,d-.307,
+                      angle=face*math.pi*.48)
     bounds("Refrigerator",x-.38,d-.32,x+.38,d+.32)
 
 
 def kitchen(x,d1,d2,face,hob,sink):
     # Worktop is physically open over the inset sink.
     left,right=x-.325,x+.325
-    box("Walnut kitchen carcass",x,(d1+d2)/2,.085,.58,d2-d1,.751,"Walnut veneer")
+    box("Kitchen cabinet back",x-face*.271,(d1+d2)/2,.085,.038,d2-d1,.751,"Walnut veneer")
+    for z in (.085,.800):
+        box("Kitchen carcass deck",x,(d1+d2)/2,z,.58,d2-d1,.036,"Walnut veneer")
     box("Recessed plinth",x,(d1+d2)/2,0,.49,d2-d1,.09,"Espresso oak")
     for a,b in ((d1,sink-.22),(sink+.22,d2)):
         box("Honed stone worktop",x,(a+b)/2,.836,.65,b-a,.055,"Travertine",bevel=.006)
@@ -664,13 +754,29 @@ def kitchen(x,d1,d2,face,hob,sink):
     for i in range(count):
         dep=d1+(d2-d1)*(i+.5)/count
         span=(d2-d1)/count-.014
+        for edge in (-1,1):
+            box("Kitchen carcass divider",x,dep+edge*(span/2-.009),.085,.58,.018,.751,"Walnut veneer")
         for z in (.105,.343,.585):
+            before=moving_start()
             box("Shaker drawer front",x+face*.301,dep,z,.035,span,.231,"Walnut veneer")
             panel(x+face*.322,dep,z+.025,span-.070,.175,"Espresso oak",axis="d")
             box("Brass drawer pull",x+face*.338,dep,z+.16,.028,.14,.018,"Brushed brass")
-        box("Ivory wall cabinet",x-face*.113,dep,1.48,.38,span,.69,"Warm white millwork","Upper walls")
+            if z<.58 or abs(dep-sink)>.45:
+                drawer_tray(x+face*.301,dep,z+.017,span-.045,.45,-face*math.pi/2)
+                moving_finish(before,"Kitchen drawer","drawer",x+face*.301,dep,travel=(face*.29,0))
+        for edge in (-1,1):
+            box("Wall cabinet side",x-face*.113,dep+edge*(span/2-.010),1.48,.38,.02,.69,
+                "Warm white millwork","Upper walls")
+        box("Wall cabinet back",x-face*.285,dep,1.48,.024,span,.69,"Warm white millwork","Upper walls")
+        for zz in (1.48,1.80,2.15):
+            box("Wall cabinet shelf",x-face*.113,dep,zz,.35,span,.023,"Warm white millwork","Upper walls")
+        before=moving_start()
+        box("Ivory cabinet door",x+face*.083,dep,1.49,.027,span,.67,"Warm white millwork","Upper walls")
         panel(x+face*.083,dep,1.51,span-.060,.62,"Ivory plaster",axis="d",group="Upper walls")
         box("Wall cabinet pull",x+face*.103,dep+.12,1.54,.02,.021,.11,"Brushed brass","Upper walls")
+        moving_finish(before,"Kitchen wall cabinet","cabinet",x+face*.083,
+                      dep+span/2 if i==0 else dep-span/2,
+                      angle=(-face if i==0 else face)*math.pi*.48,collection="Upper walls")
     box("Full stone splashback",x-face*.30,(d1+d2)/2,.89,.026,d2-d1,.60,"Travertine")
     box("Under-cabinet task strip",x+face*.031,(d1+d2)/2,1.468,.024,d2-d1-.06,.012,"Opal light","Upper walls")
     box("Cooktop glass",x,hob,.891,.49,.45,.022,"Cooktop glass",bevel=.011)
@@ -684,16 +790,14 @@ def kitchen(x,d1,d2,face,hob,sink):
 
 
 def bar(x,d):
-    rounded_slab("Recessed island plinth",x+.075,d,.014,.245,.86,.068,.069,"Espresso oak")
-    rounded_slab("Walnut island base",x+.075,d,.077,.300,.895,.815,.081,"Walnut veneer")
-    for i in range(17):
-        box("Fluted island face",x+.228,d+(i-8)*.043,.081,.021,.018,.803,"Walnut veneer",bevel=.006)
-    rounded_slab("Radius-edge travertine island top",x,d,.886,.49,1.00,.054,.115,"Travertine")
-    bounds("Breakfast island",x-.245,d-.50,x+.245,d+.50)
-    # Low seats tuck beneath the overhang. Their backs sit west of the worktop edge.
-    for delta in (-.248,.248):
-        bar_stool(x-.33,d+delta)
-        pendant(x,d+delta,2.02,.093)
+    rounded_slab("Recessed island plinth",x+.075,d,.014,.245,.50,.068,.069,"Espresso oak")
+    rounded_slab("Walnut island base",x+.075,d,.077,.300,.535,.815,.081,"Walnut veneer")
+    for i in range(11):
+        box("Fluted island face",x+.228,d+(i-5)*.043,.081,.021,.018,.803,"Walnut veneer",bevel=.006)
+    rounded_slab("Radius-edge travertine island top",x,d,.886,.49,.64,.054,.115,"Travertine")
+    bounds("Breakfast island",x-.245,d-.32,x+.245,d+.32)
+    bar_stool(x-.33,d)
+    pendant(x,d,2.02,.093)
 
 
 def resort_marble():
@@ -767,28 +871,28 @@ def upholstery(name,x,d,h,w,depth,height,mat,tilt=0,yaw=0):
 
 
 def family_sectional():
-    x,d=6.75,9.84
-    for a in (5.23,8.27):
+    x,d=6.63,9.84
+    for a in (5.11,8.15):
         box("Recessed smoked oak sectional plinth",a,d,.037,.42,.76,.12,"Espresso oak",bevel=.035)
     upholstery("Low upholstered sectional deck",x,d,.228,3.55,1.06,.27,"Resort ivory bouclé")
-    upholstery("Left chaise base",5.52,d+.58,.228,.79,1.27,.27,"Resort ivory bouclé")
-    for a in (4.99,8.51):
+    upholstery("Left chaise base",5.40,d+.58,.228,.79,1.27,.27,"Resort ivory bouclé")
+    for a in (4.87,8.39):
         upholstery("Pillow-top sectional arm",a,d,.487,.245,1.085,.37,"Resort ivory bouclé")
-    for a in (5.52,6.34,7.16,7.98):
-        chaise=a==5.52
+    for a in (5.40,6.22,7.04,7.86):
+        chaise=a==5.40
         upholstery("Deep chaise cushion" if chaise else "Deep feather seat",a,d+.38 if chaise else d+.15,
                    .402,.83,1.68 if chaise else .79,.218,"Resort ivory bouclé")
         upholstery("Loose feather back cushion",a,d-.355,.684,.835,.25,.58,"Resort ivory bouclé",.16)
     for a,depth,z,w,h,tilt,yaw,mat in [
-        (5.25,9.42,.667,.42,.39,.37,.25,"Resort moss textile"),
-        (5.62,9.46,.612,.43,.28,.30,-.19,"Resort ochre textile"),
-        (6.56,9.37,.661,.40,.37,.30,.16,"Linen"),
-        (7.81,9.42,.671,.44,.40,.30,-.15,"Resort moss textile"),
-        (8.16,9.52,.611,.40,.27,.40,-.22,"Resort ochre textile"),
+        (5.13,9.42,.667,.42,.39,.37,.25,"Resort moss textile"),
+        (5.50,9.46,.612,.43,.28,.30,-.19,"Resort ochre textile"),
+        (6.44,9.37,.661,.40,.37,.30,.16,"Linen"),
+        (7.69,9.42,.671,.44,.40,.30,-.15,"Resort moss textile"),
+        (8.04,9.52,.611,.40,.27,.40,-.22,"Resort ochre textile"),
     ]:
         upholstery("Layered accent cushion",a,depth+d-9.56,z,w,.17,h,mat,tilt,yaw)
-    bounds("Four-seat family sectional",4.84,d-.55,8.66,d+.57)
-    bounds("Sectional chaise extension",5.07,d+.57,5.97,d+1.24)
+    bounds("Four-seat family sectional",4.72,d-.55,8.54,d+.57)
+    bounds("Sectional chaise extension",4.95,d+.57,5.85,d+1.24)
 
 
 def resort_pendant(x,d,h,r):
@@ -849,45 +953,49 @@ def resort_dining(x,d):
 
 
 def resort_display_cabinet():
-    x,d=3.473,11.085
-    box("Recessed display cabinet plinth",x-.037,d,0,.282,.823,.084,"Espresso oak",bevel=.008)
-    box("Walnut display cabinet back",3.306,d,.081,.052,.944,2.19,"Walnut veneer")
-    for v in (d-.451,d+.451):
-        box("Walnut display cabinet side",x,v,.081,.386,.039,2.19,"Walnut veneer",bevel=.007)
-    for h in (.081,.690,1.115,1.534,1.911,2.242):
-        box("Honed stone display shelf" if h==.690 else "Walnut display shelf",x,d,h,.388,.905,.032,
+    x,d=3.473,11.50
+    length=1.86
+    box("Recessed display cabinet plinth",x-.037,d,0,.282,length-.10,.084,"Espresso oak",bevel=.008)
+    box("Walnut display cabinet back",3.306,d,.081,.052,length,2.32,"Walnut veneer")
+    for v in (d-length/2+.020,d+length/2-.020):
+        box("Walnut display cabinet side",x,v,.081,.386,.039,2.32,"Walnut veneer",bevel=.007)
+    for h in (.081,.690,1.115,1.534,1.951,2.370):
+        box("Honed stone display shelf" if h==.690 else "Walnut display shelf",x,d,h,.388,length-.04,.032,
             "Travertine" if h==.690 else "Walnut veneer",bevel=.006)
         if .69<h:
-            box("Concealed warm display light",3.623,d,h-.009,.016,.837,.009,"Opal light",bevel=.002)
-    for v in (d-.227,d+.227):
-        box("Inset walnut display cabinet door",3.665,v,.111,.026,.440,.553,"Walnut veneer",bevel=.009)
-        panel(3.683,v,.138,.344,.491,"Espresso oak",axis="d")
+            box("Concealed warm display light",3.623,d,h-.009,.016,length-.10,.009,"Opal light",bevel=.002)
+    for i in range(3):
+        v=d+(i-1)*.60
+        before=moving_start()
+        box("Inset walnut display cabinet door",3.665,v,.111,.026,.585,.553,"Walnut veneer",bevel=.009)
+        panel(3.683,v,.138,.490,.491,"Espresso oak",axis="d")
         box("Aged brass cabinet pull",3.700,v,.565,.022,.115,.014,"Brushed brass",bevel=.004)
-    for v,r,h,mat in [(d-.215,.092,.195,"Clay"),(d+.21,.065,.123,"Ceramic")]:
+        moving_finish(before,"Display cabinet door","cabinet",3.665,v-.292,angle=math.pi*.48)
+    for v,r,h,mat in [(d-.60,.092,.195,"Clay"),(d+.60,.065,.123,"Ceramic")]:
         cylinder("Hand-thrown display vessel",3.486,v,.722,r,h,mat)
         cylinder("Glazed vessel neck",3.486,v,.722+h,r*.52,.039,mat)
     for i,h in enumerate((.190,.215,.173,.209,.197)):
-        box("Clothbound display book",3.478,d-.31+i*.047,1.147,.156,.038,h,
+        box("Clothbound display book",3.478,d-.66+i*.047,1.147,.156,.038,h,
             ("Paper","Resort moss textile","Clay","Linen","Espresso oak")[i],bevel=.003)
-    oval("Glazed display bowl",3.477,d+.203,1.187,(.085,.128,.039),"Ceramic")
-    cylinder("Sculptural display vase",3.483,d+.16,1.566,.102,.241,"Stone plinth",scale=(.79,1))
-    cylinder("Sculptural display vase neck",3.483,d+.16,1.800,.044,.064,"Stone plinth")
-    for h in (1.47,2.16):
-        light("Display cabinet shelf wash",(3.623,d,h),(3.40,d,h-.31),8,.26,(1,.85,.67))
-    bounds("Walnut display cabinet",3.28,d-.472,3.712,d+.472)
+    oval("Glazed display bowl",3.477,d+.35,1.187,(.085,.128,.039),"Ceramic")
+    cylinder("Sculptural display vase",3.483,d+.50,1.566,.102,.241,"Stone plinth",scale=(.79,1))
+    cylinder("Sculptural display vase neck",3.483,d+.50,1.800,.044,.064,"Stone plinth")
+    for h in (1.47,2.28):
+        light("Display cabinet shelf wash",(3.623,d,h),(3.40,d,h-.31),12,.50,(1,.85,.67))
+    bounds("Walnut display cabinet",3.28,d-length/2,3.712,d+length/2)
 
 
 def resort_lounge():
     family_sectional()
     rug(6.54,10.73,4.89,2.90)
-    coffee(6.89,11.11,.65)
-    rounded_slab("Low nesting travertine table",7.21,11.65,.285,.55,.46,.064,.22,"Travertine")
-    cylinder("Nesting table walnut drum",7.21,11.65,.018,.16,.268,"Walnut veneer")
-    bounds("Nesting table",6.935,11.42,7.485,11.88)
+    coffee(6.89,11.15,.65)
+    rounded_slab("Low nesting travertine table",7.65,11.00,.285,.55,.46,.064,.22,"Travertine")
+    cylinder("Nesting table walnut drum",7.65,11.00,.018,.16,.268,"Walnut veneer")
+    bounds("Nesting table",7.375,10.77,7.925,11.23)
     resort_display_cabinet()
     for x,d,size in ((8.87,7.30,1.28),(8.91,12.21,.83)):
         plant(x,d,size)
-    media_wall(6.45,12.27,3.33,console_tv=True)
+    media_wall(6.45,12.245,3.33,console_tv=True)
     for x in (3.84,4.28,8.53):
         panel(x,12.412,.22,.32,2.20,"Warm white millwork",group="Upper walls")
     box("Gallery wall walnut backing",7.50,6.579,.59,2.34,.029,1.69,"Walnut veneer","Upper walls")
@@ -895,13 +1003,16 @@ def resort_lounge():
         box("Fine walnut gallery battens",6.415+i*.098,6.602,.597,.046,.037,1.674,
             "Walnut veneer","Upper walls",bevel=.003)
     art(7.48,6.639,1.36,1.16,.64,name="3BR living artwork • flush wall mount")
-    x,d=7.48,6.859
-    rounded_slab("Walnut worktop",x,d,.725,1.42,.48,.048,.035,"Walnut veneer")
-    box("Recessed desk support",x,d-.178,.585,1.20,.095,.14,"Espresso oak")
-    box("Slim desk drawer",x+.47,d,.638,.37,.44,.088,"Walnut veneer",bevel=.006)
-    box("Desk drawer brass pull",x+.47,d+.225,.673,.107,.016,.012,"Brushed brass",bevel=.003)
-    bounds("Work corner desk",x-.71,d-.24,x+.71,d+.24)
-    furniture("dining-chair","Work corner chair",x,d+.49,.44,.46,.83,math.pi)
+    x,d=7.48,6.92
+    rounded_slab("Walnut worktop",x,d,.725,1.42,.60,.048,.035,"Walnut veneer")
+    box("Recessed desk support",x,d-.238,.585,1.20,.095,.14,"Espresso oak")
+    before=moving_start()
+    box("Slim desk drawer",x+.47,d+.275,.638,.37,.026,.088,"Walnut veneer",bevel=.006)
+    drawer_tray(x+.47,d+.275,.641,.33,.44,0)
+    box("Desk drawer brass pull",x+.47,d+.285,.673,.107,.016,.012,"Brushed brass",bevel=.003)
+    moving_finish(before,"Work corner drawer","drawer",x+.47,d+.275,travel=(0,.25))
+    bounds("Work corner desk",x-.71,d-.30,x+.71,d+.30)
+    furniture("dining-chair","Work corner chair",x,d+.56,.44,.46,.83,math.pi)
     box("Laptop keyboard",x-.11,d,.773,.31,.195,.018,"Brushed stainless",bevel=.006)
     laptop=box("Laptop display lid",x-.11,d-.087,.786,.31,.017,.186,"Blackened bronze",bevel=.004)
     laptop.rotation_euler.x=math.radians(-11)
@@ -956,12 +1067,20 @@ def bath_vanity(x,d,width,yaw,depth=.43):
         a,b=math.cos(yaw),math.sin(yaw)
         return box(name,x+a*u-b*v,d+b*u+a*v,h,w,l,z,mat,WET,bevel,yaw)
 
-    part("Floating walnut vanity",0,-.012,.31,width-.026,depth-.033,.49,"Walnut veneer",.013)
+    part("Vanity carcass back",0,-depth/2+.018,.31,width-.026,.035,.49,"Walnut veneer")
+    part("Vanity carcass base",0,-.012,.31,width-.026,depth-.033,.023,"Walnut veneer")
+    for side in (-1,1):
+        part("Vanity carcass end",side*(width/2-.024),-.012,.31,.023,depth-.033,.49,"Walnut veneer")
     part("Honed vanity stone top",0,0,.80,width,depth,.049,"Travertine",.012)
     for h in (.335,.563):
+        before=moving_start()
         part("Walnut drawer front",0,depth/2-.006,h,width-.036,.026,.217,"Walnut veneer")
         part("Inset walnut drawer panel",0,depth/2+.009,h+.021,width-.115,.011,.176,"Espresso oak")
         part("Brushed brass drawer pull",0,depth/2+.025,h+.160,.123,.022,.014,"Brushed brass")
+        a,b=math.cos(yaw),math.sin(yaw)
+        px,pd=x-b*(depth/2-.006),d+a*(depth/2-.006)
+        drawer_tray(px,pd,h+.018,width-.075,depth-.08,yaw)
+        moving_finish(before,"Bathroom vanity drawer","drawer",px,pd,travel=(-b*.24,a*.24))
     bath_shell("Glazed porcelain washbasin",x,d,.843,[
         (.37,.235,0,.085),(.43,.282,.08,.085),(.44,.287,.105,.085),(.417,.266,.112,.085),
         (.389,.238,.103,.085),(.29,.162,.028,.077),(.258,.135,.017,.065),
@@ -1121,7 +1240,7 @@ def layout_2br():
     sofa(2.21,.56,2.55,1)
     rug(2.22,1.72,3.20,1.92)
     coffee(2.21,1.64,.51)
-    media_wall(2.10,2.77,2.55)
+    media_wall(2.10,2.745,2.55)
     lounge_cove((.12,.093),(5.88,.093))
     lounge_cove((.11,.13),(.11,2.86))
     for x in (.73,2.11,3.49):
@@ -1132,25 +1251,26 @@ def layout_2br():
     furniture("armchair","Woven cane lounge chair",4.24,1.67,.70,.61,.81,math.radians(42))
     stove_front=kitchen(8.11,3.27,4.72,-1,3.56,4.40)
     bar_x=6.44
-    bar_d=3.98
+    bar_d=4.28
     bar(bar_x,bar_d)
     refrigerator(8.06,5.105,-1)
-    bed(1.11,4.22,1.18,length=1.90)
-    bedside(1.99,3.48)
-    wardrobe(3.35,3.65,1.06,"d",-1)
-    desk(2.63,3.32,.88)
-    bed(1.98,6.80,1.60)
-    for x in (.88,3.08):
+    bed(.64,4.24,.90,length=1.90)
+    box("Compact bedside wall shelf",1.35,3.42,.61,.28,.30,.045,"Walnut veneer",bevel=.008)
+    pendant(1.35,3.42,1.76,.064)
+    wardrobe(3.35,3.73,1.04,"d",-1,sliding=True)
+    desk(1.98,3.38,.90,depth=.60)
+    bed(2.25,6.80,1.60,length=2.00)
+    for x in (1.15,3.35):
         bedside(x,5.92)
-    panel(1.98,5.575,.21,2.62,2.27,"Warm white millwork",group="Upper walls")
-    art(1.98,5.587,1.29,.91,.63)
-    wardrobe(4.66,7.72,1.37,"d",-1)
+    panel(2.25,5.575,.21,2.62,2.27,"Warm white millwork",group="Upper walls")
+    art(2.25,5.587,1.29,.91,.63)
+    wardrobe(4.64,7.72,1.37,"d",-1)
     box("Floating vanity",.29,7.45,.72,.40,.84,.08,"Walnut veneer",bevel=.017)
     box("Bronze vanity mirror",.078,7.45,1.05,.024,.57,.70,"Brushed brass","Upper walls",bevel=.019)
     box("Vanity mirror glass",.097,7.45,1.081,.014,.52,.64,"Brushed stainless","Upper walls",bevel=.011)
-    cylinder("Vanity stool",.78,7.45,0,.18,.44,"Linen")
+    cylinder("Vanity stool",.64,7.45,0,.14,.44,"Linen")
     bounds("Vanity",.09,7.03,.49,7.87)
-    bounds("Vanity stool",.60,7.27,.96,7.63)
+    bounds("Vanity stool",.50,7.31,.78,7.59)
     bath_liner((6.421,4.97),(6.421,7.43))
     bath_liner((5.07,7.421),(6.42,7.421))
     bath_tub(5.75,7.045,1.35,.72,math.pi,-.37)
@@ -1166,7 +1286,17 @@ def layout_2br():
     cylinder("Washer door trim",5.40,7.775,.47,.177,.038,"Brushed stainless",WET).rotation_euler.x=math.pi/2
     cylinder("Washer door glazing",5.40,7.754,.47,.143,.030,"Screen",WET).rotation_euler.x=math.pi/2
     bounds("Utility washer",5.105,7.785,5.695,8.375)
-    box("Laundry supply cabinet",5.43,8.273,1.20,.66,.31,.62,"Walnut veneer",WET)
+    box("Laundry cabinet back",5.43,8.414,1.20,.66,.028,.62,"Walnut veneer",WET)
+    for edge in (-1,1):
+        box("Laundry cabinet side",5.43+edge*.317,8.273,1.20,.026,.31,.62,"Walnut veneer",WET)
+    for z in (1.20,1.51,1.794):
+        box("Laundry cabinet shelf",5.43,8.273,z,.66,.29,.026,"Walnut veneer",WET)
+    for edge in (-1,1):
+        before=moving_start()
+        box("Laundry cabinet door",5.43+edge*.165,8.112,1.226,.317,.025,.568,"Walnut veneer",WET)
+        box("Laundry cabinet pull",5.43+edge*.06,8.092,1.38,.016,.02,.16,"Brushed brass",WET)
+        moving_finish(before,"Laundry cabinet door","cabinet",5.43+edge*.323,8.112,
+                      angle=-edge*math.pi*.48,collection=WET)
     bath_light(6.15,8.01)
     bath_light(7.69,7.11)
     bath_light(7.74,8.08)
@@ -1182,7 +1312,12 @@ def layout_2br():
     return {
         "label":"2BR", "center":[3.7,4.05], "span":10.5,
         "checks":[{"label":"Island to cooktop counter","metres":round(stove_front-(bar_x+.245),2),
-                   "zone":[bar_x+.245,bar_d-.50,stove_front,bar_d+.50]}],
+                   "zone":[bar_x+.245,bar_d-.32,stove_front,bar_d+.32]},
+                  {"label":"Breakfast seat width","metres":.64},
+                  {"label":"Kitchen approach","metres":.90},
+                  {"label":"Study chair to wardrobe","metres":.85},
+                  {"label":"Single bed to study chair","metres":.62},
+                  {"label":"Main bed to vanity stool","metres":.62}],
         "views":[
             ("Entry",(6.20,2.26,1.62),(2.54,1.66,1.32)),
             ("Living",(4.87,2.37,1.60),(2.02,1.17,1.17)),
@@ -1192,12 +1327,12 @@ def layout_2br():
             ("Bath access",(4.60,4.27,1.61),(5.51,4.99,1.13)),
             ("Bathroom",(5.47,4.89,1.51),(6.10,6.23,1.06)),
             ("Bedroom 1",(3.82,7.91,1.61),(1.93,6.08,1.16)),
-            ("Bedroom 2",(3.22,4.92,1.58),(1.28,3.55,1.09)),
+            ("Bedroom 2",(2.63,4.89,1.58),(1.47,3.62,1.05)),
             ("Balcony",(-.50,1.66,1.61),(2.14,1.36,1.2)),
         ],
         "routes":[[(6.20,2.26),(4.87,2.37),(4.36,2.55),(4.36,4.88),
-                   (3.22,4.92)],[(4.36,4.88),(4.34,6.28),(4.12,6.87),(3.82,7.91)],
-                  [(6.20,2.26),(6.14,2.93),(6.36,3.27),(7.20,3.27),(7.16,5.14)],
+                   (3.22,4.92),(2.63,4.89)],[(4.36,4.88),(4.34,6.28),(4.12,6.87),(3.82,7.91)],
+                  [(6.20,2.26),(6.14,2.93),(6.36,3.40),(7.20,3.40),(7.16,5.14)],
                   [(4.87,2.37),(3.62,2.40),(3.45,2.30),(3.17,2.30),(.76,2.27),(.51,1.69),(-.50,1.66)],
                   [(4.36,2.55),(4.36,4.28),(4.60,4.27),(5.53,4.40),(5.53,5.26),(5.44,5.35),(5.45,6.44)],
                   [(7.16,5.14),(7.37,5.27),(7.37,6.55),(7.23,7.56),(7.23,8.04),(6.18,8.02)]],
@@ -1256,19 +1391,19 @@ def layout_3br():
     column(.40,6.14,.66,.56)
     curtain(9.37,6.87,.62,"d")
     curtain(9.37,12.12,.53,"d")
-    bed(1.23,1.38,1.04,length=1.91)
-    pendant(1.86,.50,1.77,.082)
-    wardrobe(.35,2.35,.91,"d",1)
-    desk(2.28,.48,.93)
-    bed(4.09,1.32,1.18,length=1.94)
-    bedside(4.95,.57)
-    wardrobe(5.65,1.32,1.05,"d",-1)
-    desk(5.19,2.67,.91,-1)
-    bed(7.77,1.67,1.63)
+    bed(2.18,1.07,1.00,length=1.90)
+    pendant(1.46,.50,1.77,.082)
+    wardrobe(.35,1.78,1.10,"d",1)
+    desk(1.07,.38,.90,depth=.60)
+    bed(4.09,1.11,1.20,length=1.90)
+    bedside(4.95,.40)
+    wardrobe(5.65,1.22,1.02,"d",-1,sliding=True)
+    desk(5.38,2.61,.90,-1,depth=.60)
+    bed(7.77,1.67,1.60,length=2.00)
     for x in (6.66,8.89):
         bedside(x,.79)
-    wardrobe(6.34,5.36,1.10,"d",1)
-    desk(8.57,4.13,1.05,-1)
+    wardrobe(6.36,5.36,1.10,"d",1)
+    desk(8.57,4.13,1.05,-1,depth=.60)
     art(8.52,4.421,1.36,.88,.57,flip=-1)
     bath_liner((.079,3.07),(.079,4.93))
     bath_liner((1.83,4.079),(3.04,4.079))
@@ -1305,7 +1440,7 @@ def layout_3br():
     box("Existing service appliance",.39,8.22,0,.57,.59,.86,"Ceramic")
     stove_front=kitchen(2.68,5.07,8.10,1,5.45,6.35)
     refrigerator(1.85,6.48,-1)
-    table_left,table_top,table_bottom=resort_dining(4.88,7.44)
+    table_left,table_top,table_bottom=resort_dining(4.96,7.38)
     resort_lounge()
     lounge_cove((3.40,12.398),(9.34,12.398))
     lounge_cove((9.39,6.68),(9.39,12.30))
@@ -1323,12 +1458,16 @@ def layout_3br():
         "label":"3BR", "center":[5.1,6.2], "span":13.6,
         "checks":[{"label":"Kitchen run to dining table",
                    "metres":round(table_left-stove_front,2),
-                   "zone":[stove_front,table_top,table_left,table_bottom]}],
+                   "zone":[stove_front,table_top,table_left,table_bottom]},
+                  {"label":"Kitchen counter to dining chair","metres":1.10},
+                  {"label":"Dining end to sofa","metres":.92},
+                  {"label":"Sofa to balcony glazing","metres":.95},
+                  {"label":"Small bedroom wardrobe aisle","metres":.99}],
         "views":[
             ("Entry",(1.66,9.72,1.61),(5.73,9.60,1.25)),
             ("Living",(4.10,11.13,1.63),(7.32,10.28,1.03)),
             ("Media wall",(8.63,11.36,1.62),(6.67,12.19,1.05)),
-            ("Display cabinet",(4.62,10.89,1.58),(3.51,11.12,1.16)),
+            ("Display cabinet",(4.60,10.90,1.58),(3.51,11.50,1.25)),
             ("Dining",(6.46,8.94,1.65),(4.83,7.42,.99)),
             ("Kitchen",(3.79,8.96,1.65),(2.73,6.40,1.05)),
             ("Work corner",(8.42,8.20,1.61),(7.48,6.89,1.05)),
@@ -1337,19 +1476,19 @@ def layout_3br():
             ("Ensuite",(8.08,5.06,1.52),(9.55,6.04,1.06)),
             ("Bedroom 1",(8.88,3.16,1.61),(7.55,.82,1.16)),
             ("Bedroom 2",(4.44,2.72,1.60),(4.02,.72,1.12)),
-            ("Bedroom 3",(2.37,2.53,1.60),(1.16,.88,1.12)),
+            ("Bedroom 3",(1.50,2.55,1.60),(2.18,.80,1.12)),
             ("Balcony",(10.04,10.44,1.61),(7.44,10.85,1.14)),
         ],
         "routes":[[(1.66,9.72),(3.35,9.71),(3.55,8.62),(3.65,7.48),(3.61,5.65),
                    (3.66,3.55),(3.65,2.72),(4.44,2.72)],
-                  [(3.66,3.55),(2.42,3.55),(2.37,2.53)],
-                  [(3.66,3.55),(6.65,3.67),(7.24,3.45),(8.15,3.13),(8.88,3.16)],
+                  [(3.66,3.55),(2.42,3.55),(2.37,2.62),(1.50,2.55)],
+                  [(3.66,3.55),(6.65,3.67),(7.24,3.45),(8.15,3.10),(8.88,3.10),(8.88,3.16)],
                   [(3.55,8.62),(3.64,9.03),(6.66,9.04),(6.50,7.25)],
                   [(6.66,9.04),(8.94,8.89),(8.94,10.09),(9.18,10.64),(10.04,10.44)],
                   [(9.18,10.64),(8.99,11.71),(8.63,11.36)],
                   [(6.66,9.04),(8.42,8.20)],
                   [(3.64,9.03),(3.79,8.96),(3.53,8.59),(1.84,8.58)],
-                  [(3.64,9.03),(4.52,9.73),(4.60,10.33),(4.62,10.68),(4.76,10.87),(4.76,11.15),(4.10,11.13)],
+                  [(3.64,9.03),(4.40,9.73),(4.48,10.33),(4.50,10.68),(4.64,10.87),(4.64,11.15),(4.10,11.13)],
                   [(2.42,3.55),(1.23,3.71),(1.20,4.70),(1.55,4.61),(1.21,4.69),(2.43,4.69),(2.77,4.69)],
                   [(6.65,3.67),(7.26,4.18),(7.24,5.03),(8.08,5.06),(9.46,5.20)]],
     }
@@ -1383,9 +1522,9 @@ def export_web(path):
             mesh.transform(obj.matrix_world)
             temp=bpy.data.objects.new(obj.name,mesh)
             bpy.context.scene.collection.objects.link(temp)
-            batches.setdefault((name,mat.name),[]).append(temp)
+            batches.setdefault((name,mat.name,obj.get("motion_id")),[]).append(temp)
     export_groups={}
-    for (name,mat),objects in batches.items():
+    for (name,mat,motion_id),objects in batches.items():
         bpy.ops.object.select_all(action="DESELECT")
         for obj in objects:
             obj.select_set(True)
@@ -1397,7 +1536,21 @@ def export_web(path):
             parent=bpy.data.objects.new(name.replace(" ","_"),None)
             bpy.context.scene.collection.objects.link(parent)
             export_groups[name]=parent
-        first.parent=export_groups[name]
+        parent=export_groups[name]
+        if motion_id:
+            if motion_id not in export_groups:
+                source=bpy.data.objects[motion_id]
+                location=source.location.copy()
+                source.name=motion_id+"_editable"
+                moving=bpy.data.objects.new(motion_id,None)
+                bpy.context.scene.collection.objects.link(moving)
+                moving.location=location
+                moving.parent=parent
+                export_groups[motion_id]=moving
+            parent=export_groups[motion_id]
+        bpy.context.view_layer.update()
+        first.parent=parent
+        first.matrix_parent_inverse=parent.matrix_world.inverted()
         first.name=mat
     bpy.ops.object.select_all(action="DESELECT")
     for parent in export_groups.values():
@@ -1414,6 +1567,7 @@ def run(unit,builder):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     collections.clear()
     solids.clear()
+    OPERABLE.clear()
     floors.clear()
     MAT.clear()
     FURNITURE.clear()
@@ -1423,7 +1577,27 @@ def run(unit,builder):
         collections[name]=collection
     palette()
     data=builder()
-    data.update({"floors":floors,"solids":solids})
+    for item in OPERABLE:
+        x,d=item["pivot"]
+        label=item["label"]
+        if label.startswith(("Kitchen","Refrigerator")):
+            room="Kitchen"
+        elif label.startswith("Bathroom"):
+            candidates=[view for view in data["views"] if "bath" in view[0].lower() or view[0]=="Ensuite"]
+            room=min(candidates,key=lambda view:math.dist((x,d),view[1][:2]))[0]
+        elif label.startswith(("Wardrobe","Bedside")):
+            candidates=[view for view in data["views"] if view[0].startswith("Bedroom")]
+            room=min(candidates,key=lambda view:math.dist((x,d),view[1][:2]))[0]
+        elif label.startswith(("TV console","Display cabinet")):
+            room="Living"
+        elif label.startswith("Work corner"):
+            room="Work corner"
+        elif label.startswith("Laundry"):
+            room="Laundry"
+        else:
+            room=min(data["views"],key=lambda view:math.dist((x,d),view[1][:2]))[0]
+        item["label"]=room+" · "+label
+    data.update({"floors":floors,"solids":solids,"operable":OPERABLE})
     data["lights"]=[
         {"position":[obj.location.x,obj.location.z,-obj.location.y],
          "kind":"window" if "daylight" in obj.name.lower() else "interior",
