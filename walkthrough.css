@@ -105,3 +105,9 @@
   .walk-controls, .walk-rooms { grid-template-columns: repeat(4,minmax(0,1fr)); }
   .walk-hint { max-width: 48%; }
 }
+
+.walk-fittings p { font-size:.75rem; line-height:1.5; color:#62594d; margin:.5rem 0; }
+.walk-fittings label { display:block; }
+.walk-fittings select { width:100%; max-width:100%; box-sizing:border-box; font:inherit; font-size:.75rem; padding:.65rem .5rem; border:1px solid #d5c9b6; background:#fffaf1; color:#342e26; margin-bottom:.6rem; }
+.walk-fittings .walk-controls { display:flex; flex-wrap:wrap; gap:.4rem; }
+.walk-fittings button { flex:1; }

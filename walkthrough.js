@@ -46,10 +46,17 @@ mount.insertAdjacentHTML('afterbegin', `
             <button data-light="evening" aria-pressed="false" disabled><span class="swatch-night" aria-hidden="true"></span>Evening</button>
           </div>
         </div>
+        <div class="walk-fittings">
+          <label class="walk-kicker" for="fittingSelect">DOORS &amp; STORAGE</label>
+          <p>Tap a door, cabinet front or drawer in the model, or choose one below.</p>
+          <select id="fittingSelect" disabled><option value="">Choose a fitting</option></select>
+          <div class="walk-controls"><button id="fittingToggle" disabled>Open fitting</button><button id="fittingReset" disabled>Reset fittings</button></div>
+          <p id="fittingStatus" role="status" aria-live="polite">Room doors start open for easy circulation.</p>
+        </div>
         <div class="walk-clearances">
-          <p class="walk-kicker">KITCHEN CLEARANCE</p>
+          <p class="walk-kicker">MODEL CLEARANCES</p>
           <dl id="clearances"></dl>
-          <p>Based on the model. Verify on site with the final appliance, cabinetry and furniture sizes.</p>
+          <p>Model measurements. Confirm surveyed room sizes and final furniture, appliance and joinery dimensions before ordering.</p>
         </div>
       </aside>
     </div>
@@ -85,6 +92,165 @@ let lightStyle = 'daylight', joystickPointer = null;
 let hemi, key;
 const fillLights = [];
 
+const fittings = [];
+const fittingById = new Map();
+const fittingRay = new THREE.Raycaster();
+let activeFitting = null;
+
+function fittingPose(item, value) {
+  return {
+    angle: item.kind === 'door' ? item.angle * (1 - value) : item.angle * value,
+    x: item.pivot[0] + item.travel[0] * value,
+    z: item.pivot[1] + item.travel[1] * value
+  };
+}
+
+function fittingBlocks(item, value, x, z) {
+  const pose = fittingPose(item, value);
+  const c = Math.cos(pose.angle), s = Math.sin(pose.angle);
+  const dx = x - pose.x, dz = z - pose.z;
+  const lx = c * dx - s * dz, lz = s * dx + c * dz;
+  const [a,b,e,f] = item.rect;
+  return Math.hypot(Math.max(a-lx,0,lx-e), Math.max(b-lz,0,lz-f)) < radius;
+}
+
+function fittingCorners(item, value) {
+  const pose = fittingPose(item, value);
+  const c = Math.cos(pose.angle), s = Math.sin(pose.angle);
+  const [a,b,e,f] = item.rect;
+  return [[a,b],[e,b],[e,f],[a,f]].map(([x,z]) => [pose.x+c*x+s*z,pose.z-s*x+c*z]);
+}
+
+function rectanglesOverlap(points, rect) {
+  const [a,b,e,f] = rect;
+  const other = [[a,b],[e,b],[e,f],[a,f]];
+  const axes = [[1,0],[0,1], [points[1][1]-points[0][1],points[0][0]-points[1][0]],
+    [points[2][1]-points[1][1],points[1][0]-points[2][0]]];
+  return axes.every(([x,z]) => {
+    const first=points.map(p=>p[0]*x+p[1]*z), second=other.map(p=>p[0]*x+p[1]*z);
+    return Math.min(...first)<Math.max(...second)-.0001 && Math.min(...second)<Math.max(...first)-.0001;
+  });
+}
+
+function fittingHitsFurniture(item, value) {
+  const points=fittingCorners(item,value);
+  return item.obstacles.some(rect=>rectanglesOverlap(points,rect));
+}
+
+function applyFitting(item) {
+  const pose = fittingPose(item, item.value);
+  item.object.rotation.y = pose.angle;
+  item.object.position.x = pose.x;
+  item.object.position.z = pose.z;
+  needsRender = true;
+  renderer.shadowMap.needsUpdate = true;
+}
+
+function updateFittingButton() {
+  const button = ui('fittingToggle');
+  button.disabled = !activeFitting;
+  if (!activeFitting) return;
+  const opening = activeFitting.target < .5;
+  button.textContent = opening ? 'Open fitting' : 'Close fitting';
+  button.setAttribute('aria-expanded', String(!opening));
+  button.setAttribute('aria-label', (opening ? 'Open ' : 'Close ') + activeFitting.label);
+}
+
+function chooseFitting(item) {
+  activeFitting = item;
+  ui('fittingSelect').value = item.id;
+  ui('fittingStatus').textContent = item.label + (item.value > .98 ? ' is open.' : item.value < .02 ? ' is closed.' : ' is partly open.');
+  updateFittingButton();
+}
+
+function toggleFitting(item) {
+  stopTour();
+  chooseFitting(item);
+  item.target = item.target < .5 ? 1 : 0;
+  updateFittingButton();
+}
+
+function animateFittings(dt) {
+  for (const item of fittings) {
+    if (Math.abs(item.target - item.value) < .0001) continue;
+    const delta = Math.sign(item.target - item.value) * Math.min(dt * 1.65, Math.abs(item.target - item.value));
+    const next = item.value + delta;
+    const occupied = mode === 'walk' && fittingBlocks(item, next, camera.position.x, camera.position.z);
+    if (occupied || fittingHitsFurniture(item,next)) {
+      item.target = item.value;
+      ui('fittingStatus').textContent = occupied ? 'Move back to give ' + item.label + ' room to move.'
+        : item.label + ' has reached the available clearance.';
+      updateFittingButton();
+      continue;
+    }
+    item.value = next;
+    applyFitting(item);
+    if (item === activeFitting && Math.abs(item.value - item.target) < .0001) chooseFitting(item);
+  }
+}
+
+function pickFitting(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  fittingRay.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1,
+    -(event.clientY - rect.top) / rect.height * 2 + 1), camera);
+  const visible = object => {
+    for (let node=object; node; node=node.parent) if (!node.visible) return false;
+    return true;
+  };
+  const hit = fittingRay.intersectObject(model, true).find(item => visible(item.object));
+  if (!hit) return;
+  for (let node=hit.object; node; node=node.parent) {
+    if (fittingById.has(node.name)) {
+      toggleFitting(fittingById.get(node.name));
+      return;
+    }
+  }
+}
+
+function bindFittings() {
+  for (const spec of data.operable || []) {
+    const object = model.getObjectByName(spec.id);
+    if (!object) throw Error('Missing moving fitting ' + spec.id);
+    const item = { ...spec, object, value: spec.initial, target: spec.initial };
+    const starting=fittingCorners(item,item.initial);
+    item.obstacles=data.solids.filter(solid=>!solid.motion && !rectanglesOverlap(starting,solid.rect)).map(solid=>solid.rect);
+    fittings.push(item);
+    fittingById.set(item.id, item);
+    const option = document.createElement('option');
+    option.value = item.id;
+    option.textContent = item.label + ' · ' + fittings.length;
+    ui('fittingSelect').append(option);
+    applyFitting(item);
+  }
+  ui('fittingSelect').disabled = fittings.length === 0;
+  ui('fittingSelect').addEventListener('change', event => {
+    const item = fittingById.get(event.target.value);
+    activeFitting = item || null;
+    if (item) chooseFitting(item);
+    else updateFittingButton();
+  });
+  ui('fittingToggle').addEventListener('click', () => { if (activeFitting) toggleFitting(activeFitting); });
+  ui('fittingReset').disabled = false;
+  ui('fittingReset').addEventListener('click', () => {
+    stopTour();
+    for (const item of fittings) item.target = item.initial;
+    ui('fittingStatus').textContent = 'Returning doors and storage to their starting positions.';
+    updateFittingButton();
+  });
+  let start = null;
+  renderer.domElement.addEventListener('pointerdown', event => {
+    if (event.button === 0 || event.pointerType === 'touch') start = {id:event.pointerId,x:event.clientX,y:event.clientY,moved:false};
+  });
+  renderer.domElement.addEventListener('pointermove', event => {
+    if (start?.id === event.pointerId && Math.hypot(event.clientX-start.x,event.clientY-start.y)>7) start.moved=true;
+  });
+  renderer.domElement.addEventListener('pointerup', event => {
+    if (start?.id === event.pointerId && !start.moved) pickFitting(event);
+    start = null;
+  });
+  renderer.domElement.addEventListener('pointercancel', () => { start=null; });
+}
+
 function inside(x, z, [x1, z1, x2, z2]) {
   return x >= x1 && x <= x2 && z >= z1 && z <= z2;
 }
@@ -93,7 +259,8 @@ function canWalk(x, z) {
   for (const [dx, dz] of [[0,0], [radius,0], [-radius,0], [0,radius], [0,-radius]]) {
     if (!data.floors.some(rect => inside(x + dx, z + dz, rect))) return false;
   }
-  return !data.solids.some(({ rect: [x1, z1, x2, z2] }) => {
+  return !fittings.some(item => fittingBlocks(item, item.value, x, z)) && !data.solids.some(({ rect: [x1, z1, x2, z2], motion }) => {
+    if (motion) return false;
     const dx = Math.max(x1 - x, 0, x - x2);
     const dz = Math.max(z1 - z, 0, z - z2);
     return dx * dx + dz * dz < radius * radius;
@@ -118,6 +285,7 @@ function walkStep(dt) {
 function render(time) {
   const dt = Math.min(.04, (time - lastTime) / 1000);
   lastTime = time;
+  animateFittings(dt);
   if (mode === 'walk') walkStep(dt);
   else orbit.update();
   if (needsRender) {
@@ -139,6 +307,12 @@ function fitOverview() {
 function showRoom(index, announce = true) {
   selected = index;
   const [label, [x,z,h], [tx,tz,th]] = data.views[index];
+  for (const item of fittings) {
+    if (fittingBlocks(item, item.value, x, z)) {
+      item.value=item.target=item.initial;
+      applyFitting(item);
+    }
+  }
   camera.position.set(x,h || eye,z);
   camera.lookAt(tx,th,tz);
   needsRender = true;
@@ -175,7 +349,7 @@ function setMode(next, index = 0) {
   ui('joystick').hidden = !walking;
   stage.parentElement.dataset.mode = mode;
   ui('hint').textContent = walking
-    ? 'Drag the view to look · Use joystick or WASD to walk'
+    ? 'Drag to look · Tap fittings to open · Joystick or WASD to walk'
     : plan ? 'Drag to pan · Scroll or pinch to zoom' : 'Drag to orbit · Scroll or pinch to zoom';
   renderer.domElement.setAttribute('aria-label', walking
     ? 'Walkthrough. W and S move, A and D step sideways, arrow keys turn or move.'
@@ -394,7 +568,7 @@ async function load() {
     orbit.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
     orbit.touches.ONE = THREE.TOUCH.ROTATE;
     const path = `assets/walkthrough/${unit}`;
-    const version = unit === '3br' ? 'resort-2' : 'bathrooms-1';
+    const version = 'operable-layouts-1';
     const [gltf, settings, garden] = await Promise.all([
       new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(`${path}.glb?v=${version}`),
       fetch(`${path}.json?v=${version}`).then(response => {
@@ -422,6 +596,7 @@ async function load() {
     new ResizeObserver(resize).observe(stage);
     resize();
     bindControls();
+    bindFittings();
     setMode('orbit');
     renderer.setAnimationLoop(render);
   } catch (error) {
